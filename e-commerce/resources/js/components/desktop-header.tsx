@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { PlusSquare, MessageCircle, Send } from 'lucide-react';
+import { PlusSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { type SharedData } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -39,15 +39,6 @@ export function DesktopHeader() {
                 {auth.user ? (
                     // Logged In Actions
                     <div className="flex items-center gap-3">
-                        <button className="relative p-2 text-gray-700 hover:bg-gray-100 rounded-full transition-colors dark:text-white dark:hover:bg-gray-800">
-                            <Send className="h-6 w-6 -rotate-45" />
-                            <div className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500 border border-white"></div>
-                        </button>
-                        <button className="relative p-2 text-gray-700 hover:bg-gray-100 rounded-full transition-colors dark:text-white dark:hover:bg-gray-800">
-                            <MessageCircle className="h-6 w-6" />
-                            <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">2</span>
-                        </button>
-
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Avatar className="h-8 w-8 cursor-pointer border border-gray-200">
@@ -75,7 +66,6 @@ export function DesktopHeader() {
                         <Button asChild className="bg-umkm-orange hover:bg-umkm-orange-dark font-bold px-6">
                             <Link href="/login">Masuk</Link>
                         </Button>
-
                     </div>
                 )}
             </div>

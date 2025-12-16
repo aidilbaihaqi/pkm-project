@@ -21,6 +21,14 @@ Route::get('/search', function () {
     return Inertia::render('search');
 })->name('search');
 
+Route::get('/register-seller', function () {
+    return Inertia::render('join-umkm');
+})->name('register-seller');
+
+Route::get('/about', function () {
+    return Inertia::render('about');
+})->name('about');
+
 // Public UMKM Profile
 Route::get('/umkm/{id}', function ($id) {
     return Inertia::render('umkm/show', ['id' => $id]);
