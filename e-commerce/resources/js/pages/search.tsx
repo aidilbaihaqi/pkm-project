@@ -10,17 +10,16 @@ export default function Search() {
 
     // Mock initial recommendation data to match user request (Step 1018 image)
     const suggestions = [
-        "staycation sama pacar",
-        "pesona oyo",
-        "petugas yang siap melayani di ...",
-        "sma",
-        "mx king",
-        "nasi kfc",
-        "Shinobu Kochō",
-        "shut up evil dragon i don't want",
-        "duduk sambil ngulek",
-        "boruto x sarada"
+        "keripik singkong UMKM",
+        "sambal rumahan",
+        "kue kering homemade",
+        "kopi lokal nusantara",
+        "produk olahan ikan",
+        "oleh-oleh khas daerah",
+        "madu asli UMKM",
+        "abon ikan rumahan"
     ];
+
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
