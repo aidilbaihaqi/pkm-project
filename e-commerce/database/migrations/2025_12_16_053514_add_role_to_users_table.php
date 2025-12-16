@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->enum('role', ['user', 'seller', 'admin'])->default('user')->after('email');
+            // User biasa tidak perlu login, hanya seller dan admin
+            $table->enum('role', ['seller', 'admin'])->default('seller')->after('email');
         });
     }
 

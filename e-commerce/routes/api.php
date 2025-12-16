@@ -14,16 +14,17 @@ use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::middleware('guest')->group(function () {
-    // Public endpoints akan ditambahkan di sini
+    // Public endpoints akan ditambahkan di sini (feed reels, dll)
 });
 
-// Authenticated routes
+// Authenticated routes (Seller & Admin only - user biasa tidak perlu login)
 Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Seller only routes
-    Route::middleware('role:seller')->prefix('seller')->group(function () {
+    // Seller routes (seller & admin bisa akses)
+    Route::middleware('role:seller,admin')->prefix('seller')->group(function () {
         // UMKM profile & reels management
     });
 

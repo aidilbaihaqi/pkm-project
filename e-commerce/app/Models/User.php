@@ -12,7 +12,7 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
-    public const ROLE_USER = 'user';
+    // User biasa tidak perlu login, hanya seller dan admin
     public const ROLE_SELLER = 'seller';
     public const ROLE_ADMIN = 'admin';
 
@@ -50,11 +50,6 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
-    }
-
-    public function isUser(): bool
-    {
-        return $this->role === self::ROLE_USER;
     }
 
     public function isSeller(): bool
