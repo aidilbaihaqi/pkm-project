@@ -13,6 +13,14 @@ Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
 
+Route::get('/explore', function () {
+    return Inertia::render('explore');
+})->name('explore');
+
+Route::get('/search', function () {
+    return Inertia::render('search');
+})->name('search');
+
 // Public UMKM Profile
 Route::get('/umkm/{id}', function ($id) {
     return Inertia::render('umkm/show', ['id' => $id]);

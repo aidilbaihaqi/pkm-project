@@ -1,14 +1,10 @@
-import {
-    AppFooter,
-    AppNavbar,
-    ReelsGrid,
-    SellerCtaSection,
-} from '@/components/landing';
+import { VideoFeed } from '@/components/landing/video-feed';
+import { AppLayout } from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
 
 export default function Welcome() {
     return (
-        <>
+        <AppLayout breadcrumbs={[]}>
             <Head title="PKM Hyperlocal UMKM | Temukan UMKM Terdekat">
                 <link rel="preconnect" href="https://fonts.bunny.net" />
                 <link
@@ -21,16 +17,7 @@ export default function Welcome() {
                 />
             </Head>
 
-            <div className="min-h-screen bg-gray-50 font-sans dark:bg-gray-900">
-                <AppNavbar />
-
-                <main>
-                    <ReelsGrid />
-                    <SellerCtaSection />
-                </main>
-
-                <AppFooter />
-            </div>
-        </>
+            <VideoFeed />
+        </AppLayout>
     );
 }

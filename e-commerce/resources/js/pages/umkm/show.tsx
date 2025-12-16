@@ -49,7 +49,7 @@ export default function ShowUMKM() {
             </div>
 
             <div className="container mx-auto px-4">
-                <div className="relative -mt-16 mb-6 flex flex-col gap-4 md:flex-row md:items-end md:gap-6">
+                <div className="relative -mt-16 mb-8 flex flex-col items-center gap-4 text-center md:mb-6 md:flex-row md:items-end md:gap-6 md:text-left">
                     {/* Avatar */}
                     <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded-full border-4 border-white shadow-lg md:h-40 md:w-40 dark:border-gray-900">
                         <img
@@ -60,23 +60,23 @@ export default function ShowUMKM() {
                     </div>
 
                     {/* Info Text */}
-                    <div className="flex-1 pb-2 text-center md:text-left">
+                    <div className="flex-1 pb-2">
                         <h1 className="text-2xl font-bold text-gray-900 md:text-3xl dark:text-white">
                             {umkm.name}
                         </h1>
-                        <div className="mt-1 flex flex-wrap items-center justify-center gap-2 text-sm text-gray-600 md:justify-start dark:text-gray-300">
+                        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-gray-600 md:justify-start dark:text-gray-300">
                             <span className="flex items-center gap-1">
-                                <MapPin className="h-4 w-4" /> {umkm.address}
+                                <MapPin className="h-4 w-4 shrink-0" /> {umkm.address}
                             </span>
                             <span className="hidden text-gray-400 md:inline">•</span>
                             <span className="flex items-center gap-1 text-yellow-500">
-                                <Star className="h-4 w-4 fill-current" /> {umkm.rating} ({umkm.reviews} ulasan)
+                                <Star className="h-4 w-4 fill-current shrink-0" /> {umkm.rating} ({umkm.reviews} ulasan)
                             </span>
                         </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex shrink-0 justify-center gap-2 pb-4">
+                    <div className="flex shrink-0 gap-2 pb-2 md:pb-4">
                         <Button
                             asChild
                             className="bg-green-600 hover:bg-green-700"
@@ -92,7 +92,7 @@ export default function ShowUMKM() {
                     </div>
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-3">
+                <div className="flex flex-col-reverse gap-6 md:grid md:grid-cols-3">
                     {/* Main Content (Reels) */}
                     <div className="md:col-span-2">
                         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-800">

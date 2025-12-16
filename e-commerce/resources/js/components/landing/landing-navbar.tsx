@@ -18,7 +18,7 @@ export function AppNavbar() {
                             <MapPin className="h-3.5 w-3.5 text-white sm:h-4 sm:w-4" />
                         </div>
                         <span className="hidden text-base font-bold text-gray-900 sm:block sm:text-lg dark:text-white">
-                            Hyperlocal
+                            PKM Hyperlocal
                         </span>
                     </Link>
 

@@ -1,0 +1,59 @@
+import { Link, usePage } from '@inertiajs/react';
+import { Home, Compass, Store, Info, PlusSquare, Video, User } from 'lucide-react';
+import { type SharedData } from '@/types';
+import { cn } from '@/lib/utils';
+
+export function MobileNav() {
+    const { auth } = usePage<SharedData>().props;
+    const url = usePage().url;
+
+    const isActive = (path: string) => url === path;
+
+    const NavItem = ({ href, icon: Icon, label, active }: { href: string; icon: any; label: string; active: boolean }) => (
+        <Link href={href} className="flex flex-1 flex-col items-center justify-center gap-0.5 py-3 text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-white">
+            <Icon className={cn("h-6 w-6", active ? "text-teal-600 fill-teal-600/10" : "text-gray-500")} />
+            <span className={cn("text-[10px] font-medium", active ? "text-teal-600" : "text-gray-500")}>
+                {label}
+            </span>
+        </Link>
+    );
+
+    return (
+        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white/95 backdrop-blur-md shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:hidden dark:border-gray-800 dark:bg-gray-900/95 pb-safe">
+            <div className="flex items-end justify-between px-2 pb-2 pt-2">
+                {auth.user ? (
+                    // Seller Navigation
+                    <>
+                        <NavItem href="/" icon={Home} label="Home" active={isActive('/')} />
+                        <NavItem href="/explore" icon={Compass} label="Explore" active={isActive('/explore')} />
+                        <Link href="/seller/upload" className="flex flex-col items-center justify-center -mt-6">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-teal-500 text-white shadow-lg shadow-teal-500/30 ring-4 ring-white dark:ring-gray-900">
+                                <PlusSquare className="h-6 w-6" />
+                            </div>
+                            <span className="mt-1 text-[10px] font-medium text-gray-500">Upload</span>
+                        </Link>
+                        <NavItem href="/seller/content" icon={Video} label="Konten" active={isActive('/seller/content')} />
+                        <NavItem href="/seller/profile" icon={User} label="Profil" active={isActive('/seller/profile')} />
+                    </>
+                ) : (
+                    // Guest Navigation
+                    <>
+                        <NavItem href="/" icon={Home} label="Home" active={isActive('/')} />
+                        <NavItem href="/explore" icon={Compass} label="Explore" active={isActive('/explore')} />
+
+                        {/* Center Join Button - Floating style */}
+                        <Link href="/register-seller" className="flex flex-col items-center justify-center -mt-6 px-2">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-red-500 to-pink-600 text-white shadow-lg shadow-red-500/30 ring-4 ring-white dark:ring-gray-900 animate-pulse">
+                                <Store className="h-6 w-6" />
+                            </div>
+                            <span className="mt-1 text-[10px] font-bold text-gray-900 dark:text-gray-100">Join</span>
+                        </Link>
+
+                        <NavItem href="/about" icon={Info} label="About" active={isActive('/about')} />
+                        <NavItem href="/login" icon={User} label="Masuk" active={isActive('/login')} />
+                    </>
+                )}
+            </div>
+        </nav>
+    );
+}
