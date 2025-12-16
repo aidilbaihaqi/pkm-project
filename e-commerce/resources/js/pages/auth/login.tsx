@@ -1,21 +1,20 @@
 import { Button } from '@/components/ui/button';
 import { Head, Link } from '@inertiajs/react';
-import { MapPin } from 'lucide-react';
 
 export default function Login() {
     return (
         <>
-            <Head title="Masuk - PKM Hyperlocal UMKM" />
+            <Head title="Masuk - UMKMku" />
 
             <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
                 {/* Header */}
                 <header className="flex items-center justify-center py-8">
                     <Link href="/" className="flex items-center gap-2">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600">
-                            <MapPin className="h-5 w-5 text-white" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden">
+                            <img src="/logo-umkmku.webp" alt="UMKMku" className="h-10 w-10 object-contain" />
                         </div>
                         <span className="text-xl font-bold text-gray-900 dark:text-white">
-                            PKM Hyperlocal
+                            UMKMku
                         </span>
                     </Link>
                 </header>
@@ -75,24 +74,24 @@ export default function Login() {
                             {/* Info Text */}
                             <p className="text-center text-sm text-gray-500 dark:text-gray-400">
                                 Dengan masuk, Anda menyetujui{' '}
-                                <a href="#" className="text-teal-600 hover:underline dark:text-teal-400">
+                                <a href="#" className="text-umkm-orange hover:underline">
                                     Syarat & Ketentuan
                                 </a>{' '}
                                 dan{' '}
-                                <a href="#" className="text-teal-600 hover:underline dark:text-teal-400">
+                                <a href="#" className="text-umkm-orange hover:underline">
                                     Kebijakan Privasi
                                 </a>
                             </p>
                         </div>
 
                         {/* Seller CTA */}
-                        <div className="mt-6 rounded-xl border border-teal-200 bg-teal-50 p-4 text-center dark:border-teal-800 dark:bg-teal-900/20">
+                        <div className="mt-6 rounded-xl border border-orange-200 bg-orange-50 p-4 text-center dark:border-orange-800 dark:bg-orange-900/20">
                             <p className="text-sm text-gray-700 dark:text-gray-300">
                                 Punya UMKM? Daftar dan promosikan produkmu!
                             </p>
                             <a
                                 href="/login/redirect"
-                                className="mt-2 inline-block text-sm font-medium text-teal-600 hover:underline dark:text-teal-400"
+                                className="mt-2 inline-block text-sm font-medium text-umkm-orange hover:underline"
                             >
                                 Daftar Sebagai Seller →
                             </a>
@@ -112,7 +111,7 @@ export default function Login() {
 
                 {/* Footer */}
                 <footer className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                    © 2025 PKM Hyperlocal UMKM Platform
+                    © 2025 UMKMku
                 </footer>
             </div>
         </>

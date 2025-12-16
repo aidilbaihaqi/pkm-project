@@ -32,11 +32,11 @@ const umkm = {
 };
 
 export default function ShowUMKM() {
-    const whatsappLink = `https://wa.me/${umkm.whatsapp}?text=Halo ${umkm.name}, saya melihat profil Anda di PKM Hyperlocal.`;
+    const whatsappLink = `https://wa.me/${umkm.whatsapp}?text=Halo ${umkm.name}, saya melihat profil Anda di UMKMku.`;
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20 dark:bg-gray-900">
-            <Head title={`${umkm.name} - PKM Hyperlocal`} />
+            <Head title={`${umkm.name} - UMKMku`} />
 
             {/* Cover Image */}
             <div className="relative h-48 w-full bg-gray-200 md:h-64">

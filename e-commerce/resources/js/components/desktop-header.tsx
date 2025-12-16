@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Search, MapPin, PlusSquare, User, MessageCircle, Send, LogIn, Menu } from 'lucide-react';
+import { PlusSquare, MessageCircle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { type SharedData } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,11 +12,11 @@ export function DesktopHeader() {
         <header className="fixed top-0 left-0 right-0 z-50 hidden md:flex h-16 items-center justify-between border-b border-gray-100 bg-white px-4 md:px-8 dark:border-gray-800 dark:bg-gray-900">
             {/* Left: Logo */}
             <Link href="/" className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600 shadow-lg shadow-teal-600/20">
-                    <MapPin className="h-6 w-6 text-white" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden">
+                    <img src="/logo-umkmku.webp" alt="UMKMku" className="h-10 w-10 object-contain" />
                 </div>
                 <span className="hidden text-xl font-bold tracking-tight text-gray-900 md:block dark:text-white">
-                    Hyperlocal
+                    UMKMku
                 </span>
             </Link>
 
@@ -72,7 +72,7 @@ export function DesktopHeader() {
                 ) : (
                     // Guest Actions
                     <div className="flex items-center gap-3">
-                        <Button asChild className="bg-teal-600 hover:bg-teal-700 font-bold px-6">
+                        <Button asChild className="bg-umkm-orange hover:bg-umkm-orange-dark font-bold px-6">
                             <Link href="/login">Masuk</Link>
                         </Button>
 

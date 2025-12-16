@@ -21,10 +21,10 @@ export default defineConfig({
             registerType: 'autoUpdate',
             includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png'],
             manifest: {
-                name: 'PKM Hyperlocal UMKM',
-                short_name: 'Hyperlocal',
+                name: 'UMKMku - Platform UMKM Lokal',
+                short_name: 'UMKMku',
                 description: 'Platform hyperlocal untuk menemukan UMKM terdekat melalui video reels',
-                theme_color: '#0D9488',
+                theme_color: '#F97316',
                 background_color: '#ffffff',
                 display: 'standalone',
                 orientation: 'portrait',

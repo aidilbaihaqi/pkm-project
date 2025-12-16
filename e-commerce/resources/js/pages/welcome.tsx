@@ -5,7 +5,7 @@ import { Head } from '@inertiajs/react';
 export default function Welcome() {
     return (
         <AppLayout breadcrumbs={[]}>
-            <Head title="PKM Hyperlocal UMKM | Temukan UMKM Terdekat">
+            <Head title="UMKMku | Temukan UMKM Terdekat">
                 <link rel="preconnect" href="https://fonts.bunny.net" />
                 <link
                     href="https://fonts.bunny.net/css?family=inter:400,500,600,700"
@@ -13,7 +13,7 @@ export default function Welcome() {
                 />
                 <meta
                     name="description"
-                    content="Platform hyperlocal untuk menemukan UMKM terdekat melalui video reels yang menarik. Pesan langsung via WhatsApp!"
+                    content="UMKMku - Platform untuk menemukan UMKM terdekat melalui video reels yang menarik. Pesan langsung via WhatsApp!"
                 />
             </Head>
 

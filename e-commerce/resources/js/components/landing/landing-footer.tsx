@@ -1,4 +1,3 @@
-import { MapPin } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 
 export function AppFooter() {
@@ -8,24 +7,24 @@ export function AppFooter() {
                 <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
                     {/* Logo */}
                     <Link href="/" className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600">
-                            <MapPin className="h-4 w-4 text-white" />
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden">
+                            <img src="/logo-umkmku.webp" alt="UMKMku" className="h-8 w-8 object-contain" />
                         </div>
                         <span className="font-bold text-gray-900 dark:text-white">
-                            PKM Hyperlocal UMKM
+                            UMKMku
                         </span>
                     </Link>
 
                     {/* Links */}
                     <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
-                        <a href="#" className="hover:text-teal-600">Tentang</a>
-                        <a href="#" className="hover:text-teal-600">Bantuan</a>
-                        <a href="#" className="hover:text-teal-600">Kontak</a>
+                        <a href="#" className="hover:text-umkm-orange">Tentang</a>
+                        <a href="#" className="hover:text-umkm-orange">Bantuan</a>
+                        <a href="#" className="hover:text-umkm-orange">Kontak</a>
                     </div>
 
                     {/* Copyright */}
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                        © 2025 PKM Hyperlocal
+                        © 2025 UMKMku
                     </p>
                 </div>
             </div>

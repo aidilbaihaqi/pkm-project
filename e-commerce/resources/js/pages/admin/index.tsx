@@ -16,12 +16,12 @@ export default function AdminDashboard() {
                         ⚙️ Admin Dashboard
                     </h1>
                     <p className="text-gray-600 dark:text-gray-400">
-                        Panel administrasi untuk mengelola platform PKM Hyperlocal UMKM.
+                        Panel administrasi untuk mengelola platform UMKMku.
                     </p>
 
                     <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <div className="rounded-lg bg-teal-50 p-4 dark:bg-teal-900/20">
-                            <div className="text-2xl font-bold text-teal-600">0</div>
+                        <div className="rounded-lg bg-orange-50 p-4 dark:bg-orange-900/20">
+                            <div className="text-2xl font-bold text-umkm-orange">0</div>
                             <div className="text-sm text-gray-600 dark:text-gray-400">Total Users</div>
                         </div>
                         <div className="rounded-lg bg-green-50 p-4 dark:bg-green-900/20">
