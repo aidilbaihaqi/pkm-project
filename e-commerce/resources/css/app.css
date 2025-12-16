@@ -139,3 +139,68 @@
         @apply bg-background text-foreground;
     }
 }
+
+/* PKM Hyperlocal UMKM - Teal Color Scheme */
+:root {
+    --pkm-primary: #0D9488;
+    --pkm-primary-dark: #0F766E;
+    --pkm-primary-light: #14B8A6;
+    --pkm-whatsapp: #25D366;
+    --pkm-whatsapp-dark: #128C7E;
+}
+
+.bg-pkm-primary {
+    background-color: var(--pkm-primary);
+}
+
+.bg-pkm-primary-dark {
+    background-color: var(--pkm-primary-dark);
+}
+
+.text-pkm-primary {
+    color: var(--pkm-primary);
+}
+
+.hover\:bg-pkm-primary-dark:hover {
+    background-color: var(--pkm-primary-dark);
+}
+
+.bg-pkm-whatsapp {
+    background-color: var(--pkm-whatsapp);
+}
+
+.hover\:bg-pkm-whatsapp-dark:hover {
+    background-color: var(--pkm-whatsapp-dark);
+}
+
+/* Smooth scroll */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Gradient animation */
+@keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+.animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient-shift 8s ease infinite;
+}
+
+/* Fade in animation */
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fade-in-up 0.6s ease-out forwards;
+}
