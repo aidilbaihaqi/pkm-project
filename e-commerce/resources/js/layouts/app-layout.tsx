@@ -10,7 +10,7 @@ interface AppLayoutProps {
     breadcrumbs?: BreadcrumbItem[];
 }
 
-export function AppLayout({ breadcrumbs, children }: AppLayoutProps) {
+function AppLayout({ breadcrumbs, children }: AppLayoutProps) {
     const isSearchPage = typeof window !== 'undefined' ? window.location.pathname.startsWith('/search') : false;
 
     return (
@@ -37,3 +37,7 @@ export function AppLayout({ breadcrumbs, children }: AppLayoutProps) {
         </div>
     );
 }
+
+
+export { AppLayout };
+export default AppLayout;
