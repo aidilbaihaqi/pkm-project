@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button';
-import { login } from '@/routes';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { MapPin, Search, User } from 'lucide-react';
@@ -61,7 +60,7 @@ export function AppNavbar() {
                         </Button>
                     ) : (
                         <Button asChild size="sm" className="h-8 bg-teal-600 px-3 text-xs hover:bg-teal-700 sm:h-9 sm:px-4 sm:text-sm">
-                            <Link href={login()}>Masuk</Link>
+                            <Link href="/login">Masuk</Link>
                         </Button>
                     )}
                 </div>
