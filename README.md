@@ -113,12 +113,7 @@ Konten akan diurutkan secara otomatis dan ditampilkan di halaman utama pengguna.
 
 ### 9.1 Opsi Stack
 
-#### Opsi 1 – Biasa (Stabil)
-- Backend: Laravel (Full Stack)
-- Database: MySQL
-- Hosting: Shared Hosting
-
-#### Opsi 2 – Cepat (Direkomendasikan)
+#### Opsi 1 – Cepat (Direkomendasikan)
 - Backend: Laravel (REST API)
 - Frontend: React (PWA)
 - Database: MySQL
