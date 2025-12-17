@@ -1,7 +1,45 @@
 import { Button } from '@/components/ui/button';
-import { Head, Link } from '@inertiajs/react';
-import { ChevronLeft } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Head } from '@inertiajs/react';
 import { AppLayout } from '@/layouts/app-layout';
+import { useState, FormEvent } from 'react';
+import { Mail } from 'lucide-react';
+
+function EmailLoginForm() {
+    const [email, setEmail] = useState('');
+
+    const handleSubmit = (e: FormEvent) => {
+        e.preventDefault();
+        if (email) {
+            // Redirect ke WorkOS SSO dengan login_hint (email)
+            window.location.href = `/login/sso?email=${encodeURIComponent(email)}`;
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Input
+                    type="email"
+                    placeholder="Masukkan email kamu"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="h-12 pl-12 rounded-full border-gray-200 dark:border-gray-700 dark:bg-gray-800"
+                />
+            </div>
+            <Button
+                type="submit"
+                size="lg"
+                disabled={!email}
+                className="w-full h-12 bg-umkm-orange hover:bg-umkm-orange/90 text-white rounded-full font-semibold"
+            >
+                Masuk dengan Email
+            </Button>
+        </form>
+    );
+}
 
 export default function Login() {
     return (
@@ -16,10 +54,8 @@ export default function Login() {
 
                     {/* Logo */}
                     <div className="mb-6">
-                        <div className="h-20 w-20 rounded-2xl overflow-hidden bg-umkm-orange p-0.5">
-                            <div className="h-full w-full rounded-[14px] bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden">
-                                <img src="/logo-umkmku.webp" alt="UMKMku" className="h-16 w-16 object-contain" />
-                            </div>
+                        <div className="h-full w-full bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden">
+                            <img src="/logo-umkmku.webp" alt="UMKMku" className="h-16 w-16 object-contain" />
                         </div>
                     </div>
 
@@ -59,6 +95,16 @@ export default function Login() {
                                 Masuk dengan Google
                             </a>
                         </Button>
+
+                        {/* Divider */}
+                        <div className="flex items-center gap-3">
+                            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+                            <span className="text-gray-500 dark:text-gray-400 text-xs">atau</span>
+                            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+                        </div>
+
+                        {/* Email SSO Login */}
+                        <EmailLoginForm />
 
                         {/* Info - Auto Register */}
                         <p className="text-center text-gray-600 dark:text-white/70 text-xs">
