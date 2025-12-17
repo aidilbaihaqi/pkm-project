@@ -2,21 +2,48 @@ import { Link, usePage } from '@inertiajs/react';
 import { Home, Compass, Store, Info, PlusSquare, Video, User } from 'lucide-react';
 import { type SharedData } from '@/types';
 import { cn } from '@/lib/utils';
+import { useState } from 'react';
 
 export function MobileNav() {
     const { auth } = usePage<SharedData>().props;
     const url = usePage().url;
+    const [pressedItem, setPressedItem] = useState<string | null>(null);
 
     const isActive = (path: string) => url === path;
 
-    const NavItem = ({ href, icon: Icon, label, active }: { href: string; icon: any; label: string; active: boolean }) => (
-        <Link href={href} className="flex flex-1 flex-col items-center justify-center gap-0.5 py-3 text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-white">
-            <Icon className={cn("h-6 w-6", active ? "text-teal-600 fill-teal-600/10" : "text-gray-500")} />
-            <span className={cn("text-[10px] font-medium", active ? "text-teal-600" : "text-gray-500")}>
-                {label}
-            </span>
-        </Link>
-    );
+    const NavItem = ({ href, icon: Icon, label, active }: { href: string; icon: any; label: string; active: boolean }) => {
+        const isPressed = pressedItem === href;
+        
+        return (
+            <Link 
+                href={href} 
+                onTouchStart={() => setPressedItem(href)}
+                onTouchEnd={() => setTimeout(() => setPressedItem(null), 150)}
+                onClick={() => setPressedItem(href)}
+                className={cn(
+                    "flex flex-1 flex-col items-center justify-center gap-0.5 py-3 transition-all duration-200",
+                    isPressed ? "scale-90" : "scale-100"
+                )}
+            >
+                <div className={cn(
+                    "transition-all duration-200",
+                    active && "animate-bounce-subtle"
+                )}>
+                    <Icon className={cn(
+                        "h-6 w-6 transition-all duration-200",
+                        active ? "text-teal-600 fill-teal-600/10 scale-110" : "text-gray-500",
+                        isPressed && "scale-95"
+                    )} />
+                </div>
+                <span className={cn(
+                    "text-[10px] font-medium transition-all duration-200",
+                    active ? "text-teal-600 font-semibold" : "text-gray-500"
+                )}>
+                    {label}
+                </span>
+            </Link>
+        );
+    };
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white/95 backdrop-blur-md shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:hidden dark:border-gray-800 dark:bg-gray-900/95 pb-safe">

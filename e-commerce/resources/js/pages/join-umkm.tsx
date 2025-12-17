@@ -42,7 +42,7 @@ export default function JoinUmkm() {
                     </h1>
 
                     <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
-                        Promosikan produk UMKM-mu dengan video pendek. Mudah seperti pakai TikTok!
+                        Promosikan produk UMKM-mu dengan konten menarik. Mudah seperti pakai TikTok!
                     </p>
 
                     {/* Phone Preview */}
@@ -71,19 +71,19 @@ export default function JoinUmkm() {
                     </div>
 
                     {/* Benefits */}
-                    <div className="grid grid-cols-3 gap-3 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                         {benefits.map((benefit, index) => (
                             <div
                                 key={index}
-                                className="rounded-xl bg-gray-50 dark:bg-gray-800 p-4 text-center"
+                                className="rounded-xl bg-gray-50 dark:bg-gray-800 p-5 text-center"
                             >
-                                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-umkm-orange/10 text-umkm-orange mb-2">
-                                    <benefit.icon className="h-5 w-5" />
+                                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-umkm-orange/10 text-umkm-orange mb-3">
+                                    <benefit.icon className="h-6 w-6" />
                                 </div>
-                                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
                                     {benefit.title}
                                 </h3>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
                                     {benefit.description}
                                 </p>
                             </div>
@@ -112,14 +112,6 @@ export default function JoinUmkm() {
                             <span>Tanpa Ribet</span>
                         </div>
                     </div>
-
-                    {/* Login Link */}
-                    <p className="text-center text-gray-500 dark:text-gray-400 text-sm mt-6">
-                        Sudah punya akun?{' '}
-                        <Link href="/login" className="text-umkm-orange font-medium hover:underline">
-                            Masuk di sini
-                        </Link>
-                    </p>
                 </div>
             </div>
         </AppLayout>

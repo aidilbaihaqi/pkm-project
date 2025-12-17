@@ -1,18 +1,19 @@
 import { Button } from '@/components/ui/button';
 import { Head, Link } from '@inertiajs/react';
 import { ChevronLeft } from 'lucide-react';
+import { AppLayout } from '@/layouts/app-layout';
 
 export default function Login() {
     return (
-        <>
+        <AppLayout>
             <Head title="Masuk - UMKMku" />
 
             {/* TikTok-style Login - Full Screen */}
-            <div className="min-h-screen bg-black text-white flex flex-col">
+            <div className="min-h-[calc(100vh-4rem)] bg-white dark:bg-gray-900 text-gray-900 dark:text-white flex flex-col pb-20 md:pb-0">
 
                 {/* Header - Back Button */}
                 <header className="flex items-center justify-between p-4">
-                    <Link href="/" className="flex items-center gap-1 text-white hover:text-white/80">
+                    <Link href="/" className="flex items-center gap-1 text-gray-900 dark:text-white hover:text-umkm-orange transition-colors">
                         <ChevronLeft className="h-5 w-5" />
                         <span className="text-sm">Kembali</span>
                     </Link>
@@ -25,7 +26,7 @@ export default function Login() {
                     {/* Logo */}
                     <div className="mb-6">
                         <div className="h-20 w-20 rounded-2xl overflow-hidden bg-umkm-orange p-0.5">
-                            <div className="h-full w-full rounded-[14px] bg-black flex items-center justify-center overflow-hidden">
+                            <div className="h-full w-full rounded-[14px] bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden">
                                 <img src="/logo-umkmku.webp" alt="UMKMku" className="h-16 w-16 object-contain" />
                             </div>
                         </div>
@@ -33,7 +34,7 @@ export default function Login() {
 
                     {/* App Name */}
                     <h1 className="text-3xl font-bold mb-2">UMKMku</h1>
-                    <p className="text-white/80 text-sm mb-10 text-center">
+                    <p className="text-gray-600 dark:text-white/80 text-sm mb-10 text-center">
                         Jualan Laris Lewat Video
                     </p>
 
@@ -43,7 +44,7 @@ export default function Login() {
                         <Button
                             asChild
                             size="lg"
-                            className="w-full h-12 bg-white text-gray-800 hover:bg-gray-100 rounded-full font-semibold"
+                            className="w-full h-12 bg-white dark:bg-white text-gray-800 hover:bg-gray-100 border border-gray-200 rounded-full font-semibold shadow-md"
                         >
                             <a href="/login/redirect" className="flex items-center justify-center gap-3">
                                 <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -69,7 +70,7 @@ export default function Login() {
                         </Button>
 
                         {/* Info - Auto Register */}
-                        <p className="text-center text-white/70 text-xs">
+                        <p className="text-center text-gray-600 dark:text-white/70 text-xs">
                             Belum punya akun? Otomatis terdaftar saat pertama masuk
                         </p>
                     </div>
@@ -78,15 +79,15 @@ export default function Login() {
                 {/* Bottom Section */}
                 <div className="px-8 pb-8">
                     {/* Terms */}
-                    <p className="text-center text-xs text-white/60 leading-relaxed">
+                    <p className="text-center text-xs text-gray-500 dark:text-white/60 leading-relaxed">
                         Dengan masuk, kamu menyetujui{' '}
-                        <a href="#" className="text-white underline">Syarat & Ketentuan</a>
+                        <a href="#" className="text-umkm-orange hover:underline">Syarat & Ketentuan</a>
                         {' '}dan{' '}
-                        <a href="#" className="text-white underline">Kebijakan Privasi</a>
+                        <a href="#" className="text-umkm-orange hover:underline">Kebijakan Privasi</a>
                         {' '}UMKMku
                     </p>
                 </div>
             </div>
-        </>
+        </AppLayout>
     );
 }

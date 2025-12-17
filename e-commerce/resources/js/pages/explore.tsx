@@ -6,19 +6,25 @@ import { cn } from '@/lib/utils';
 
 // Mock Data for Explore Grid - UMKM focused
 const exploreItems = [
-    { id: 1, thumbnail: 'https://picsum.photos/seed/umkm1/400/600', likes: '2.5K', umkmName: 'Warung Bu Tini', category: 'Kuliner', location: 'Yogyakarta' },
-    { id: 2, thumbnail: 'https://picsum.photos/seed/umkm2/400/600', likes: '1.8K', umkmName: 'Batik Pekalongan', category: 'Fashion', location: 'Pekalongan' },
-    { id: 3, thumbnail: 'https://picsum.photos/seed/umkm3/400/600', likes: '3.2K', umkmName: 'Kopi Nusantara', category: 'Kuliner', location: 'Bandung' },
-    { id: 4, thumbnail: 'https://picsum.photos/seed/umkm4/400/600', likes: '980', umkmName: 'Kerajinan Bali', category: 'Kerajinan', location: 'Bali' },
-    { id: 5, thumbnail: 'https://picsum.photos/seed/umkm5/400/600', likes: '4.1K', umkmName: 'Sate Madura Pak Jo', category: 'Kuliner', location: 'Surabaya' },
-    { id: 6, thumbnail: 'https://picsum.photos/seed/umkm6/400/600', likes: '1.2K', umkmName: 'Tenun Flores', category: 'Fashion', location: 'NTT' },
-    { id: 7, thumbnail: 'https://picsum.photos/seed/umkm7/400/600', likes: '2.1K', umkmName: 'Rendang Minang', category: 'Kuliner', location: 'Padang' },
-    { id: 8, thumbnail: 'https://picsum.photos/seed/umkm8/400/600', likes: '890', umkmName: 'Furniture Jepara', category: 'Kerajinan', location: 'Jepara' },
-    { id: 9, thumbnail: 'https://picsum.photos/seed/umkm9/400/600', likes: '1.5K', umkmName: 'Tempe Malang', category: 'Kuliner', location: 'Malang' },
-    { id: 10, thumbnail: 'https://picsum.photos/seed/umkm10/400/600', likes: '760', umkmName: 'Songket Palembang', category: 'Fashion', location: 'Palembang' },
-    { id: 11, thumbnail: 'https://picsum.photos/seed/umkm11/400/600', likes: '2.8K', umkmName: 'Gudeg Wijilan', category: 'Kuliner', location: 'Yogyakarta' },
-    { id: 12, thumbnail: 'https://picsum.photos/seed/umkm12/400/600', likes: '1.1K', umkmName: 'Gerabah Kasongan', category: 'Kerajinan', location: 'Yogyakarta' },
+    { id: 1, thumbnail: 'https://picsum.photos/seed/umkm1/400/600', likes: '2.5K', umkmName: 'Warung Bu Tini', category: 'Kuliner', location: 'Yogyakarta', distance: '500m' },
+    { id: 2, thumbnail: 'https://picsum.photos/seed/umkm2/400/600', likes: '1.8K', umkmName: 'Batik Pekalongan', category: 'Fashion', location: 'Pekalongan', distance: '2.3km' },
+    { id: 3, thumbnail: 'https://picsum.photos/seed/umkm3/400/600', likes: '3.2K', umkmName: 'Kopi Nusantara', category: 'Kuliner', location: 'Bandung', distance: '800m' },
+    { id: 4, thumbnail: 'https://picsum.photos/seed/umkm4/400/600', likes: '980', umkmName: 'Kerajinan Bali', category: 'Kerajinan', location: 'Bali', distance: '5.1km' },
+    { id: 5, thumbnail: 'https://picsum.photos/seed/umkm5/400/600', likes: '4.1K', umkmName: 'Sate Madura Pak Jo', category: 'Kuliner', location: 'Surabaya', distance: '1.2km' },
+    { id: 6, thumbnail: 'https://picsum.photos/seed/umkm6/400/600', likes: '1.2K', umkmName: 'Tenun Flores', category: 'Fashion', location: 'NTT', distance: '3.5km' },
+    { id: 7, thumbnail: 'https://picsum.photos/seed/umkm7/400/600', likes: '2.1K', umkmName: 'Rendang Minang', category: 'Kuliner', location: 'Padang', distance: '650m' },
+    { id: 8, thumbnail: 'https://picsum.photos/seed/umkm8/400/600', likes: '890', umkmName: 'Furniture Jepara', category: 'Kerajinan', location: 'Jepara', distance: '4.2km' },
+    { id: 9, thumbnail: 'https://picsum.photos/seed/umkm9/400/600', likes: '1.5K', umkmName: 'Tempe Malang', category: 'Kuliner', location: 'Malang', distance: '1.8km' },
+    { id: 10, thumbnail: 'https://picsum.photos/seed/umkm10/400/600', likes: '760', umkmName: 'Songket Palembang', category: 'Fashion', location: 'Palembang', distance: '2.9km' },
+    { id: 11, thumbnail: 'https://picsum.photos/seed/umkm11/400/600', likes: '2.8K', umkmName: 'Gudeg Wijilan', category: 'Kuliner', location: 'Yogyakarta', distance: '350m' },
+    { id: 12, thumbnail: 'https://picsum.photos/seed/umkm12/400/600', likes: '1.1K', umkmName: 'Gerabah Kasongan', category: 'Kerajinan', location: 'Yogyakarta', distance: '1.5km' },
 ];
+
+// Nearby UMKM - sorted by distance
+const nearbyUMKM = exploreItems
+    .filter(item => item.distance)
+    .sort((a, b) => parseFloat(a.distance!) - parseFloat(b.distance!))
+    .slice(0, 6);
 
 // UMKM-focused categories
 const categories = [
@@ -55,6 +61,56 @@ export default function Explore() {
                     <p className="text-gray-600 dark:text-gray-400">
                         Temukan produk lokal terbaik dari seluruh Indonesia
                     </p>
+                </div>
+
+                {/* UMKM Terdekat Section */}
+                <div className="mb-8 bg-gradient-to-br from-umkm-green/10 to-umkm-blue/10 dark:from-umkm-green/5 dark:to-umkm-blue/5 rounded-2xl p-4 md:p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                            <MapPin className="h-5 w-5 text-umkm-green" />
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                                UMKM Terdekat
+                            </h2>
+                        </div>
+                        <Link href="/nearby" className="text-sm font-semibold text-umkm-orange hover:text-umkm-orange-dark">
+                            Lihat Semua
+                        </Link>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                        {nearbyUMKM.map((item) => (
+                            <Link
+                                key={item.id}
+                                href={`/umkm/${item.id}`}
+                                className="group relative aspect-square overflow-hidden rounded-xl bg-gray-900 cursor-pointer shadow-md hover:shadow-xl transition-all hover:scale-105"
+                            >
+                                <img
+                                    src={item.thumbnail}
+                                    alt={item.umkmName}
+                                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110 opacity-90"
+                                />
+                                
+                                {/* Overlay */}
+                                <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/70" />
+                                
+                                {/* Distance Badge */}
+                                <div className="absolute top-2 right-2">
+                                    <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-umkm-green text-white text-[10px] font-bold">
+                                        <MapPin className="h-3 w-3" />
+                                        {item.distance}
+                                    </div>
+                                </div>
+                                
+                                {/* Info */}
+                                <div className="absolute bottom-0 left-0 w-full p-2 text-white">
+                                    <h3 className="font-bold text-xs mb-0.5 drop-shadow-md line-clamp-1">
+                                        {item.umkmName}
+                                    </h3>
+                                    <p className="text-[10px] opacity-80 line-clamp-1">{item.category}</p>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Search Bar - Mobile */}

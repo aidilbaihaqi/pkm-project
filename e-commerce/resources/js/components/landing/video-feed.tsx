@@ -2,8 +2,7 @@ import { Link } from '@inertiajs/react';
 import { useRef, useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Store, Play, PlusSquare, ShoppingBag, Search } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { ArrowUp, ArrowDown, Heart, Share2, Volume2, VolumeX, Search } from 'lucide-react';
 
 // Reuse Reel type
 interface Reel {
@@ -18,6 +17,8 @@ interface Reel {
     likes: number;
     comments: number;
     distance?: string;
+    images?: string[]; // For carousel/gallery
+    type?: 'video' | 'image'; // Content type
 }
 
 // Sample Data (Need to be consistent with ReelsGrid)
@@ -34,6 +35,7 @@ const sampleReels: Reel[] = [
         views: 1250,
         likes: 234,
         comments: 42,
+        type: 'video',
     },
     {
         id: 2,
@@ -47,8 +49,13 @@ const sampleReels: Reel[] = [
         views: 856,
         likes: 189,
         comments: 28,
+        type: 'image',
+        images: [
+            'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=600&fit=crop',
+            'https://images.unsplash.com/photo-1511920170033-f8396924c348?w=400&h=600&fit=crop',
+            'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=600&fit=crop',
+        ],
     },
-    // Add more mock data later or fetch from API
     {
         id: 3,
         thumbnail: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400&h=600&fit=crop',
@@ -59,6 +66,7 @@ const sampleReels: Reel[] = [
         views: 2100,
         likes: 445,
         comments: 67,
+        type: 'video',
     },
 ];
 
@@ -69,6 +77,9 @@ export function VideoFeed() {
     const [activeIndex, setActiveIndex] = useState(0);
     const [isMuted, setIsMuted] = useState(true);
     const [expandedReels, setExpandedReels] = useState<number[]>([]);
+    const [carouselIndexes, setCarouselIndexes] = useState<Record<number, number>>({});
+    const [showHeartAnimation, setShowHeartAnimation] = useState<number | null>(null);
+    const lastTapRef = useRef<{ time: number; reelId: number } | null>(null);
 
     // Scroll active reel into view
     const scrollToReel = (index: number) => {
@@ -106,6 +117,46 @@ export function VideoFeed() {
         );
     };
 
+    // Handle double tap to like
+    const handleDoubleTap = (reelId: number) => {
+        const now = Date.now();
+        const lastTap = lastTapRef.current;
+
+        if (lastTap && lastTap.reelId === reelId && now - lastTap.time < 300) {
+            // Double tap detected
+            if (!likedReels.includes(reelId)) {
+                toggleLike(reelId);
+            }
+            setShowHeartAnimation(reelId);
+            setTimeout(() => setShowHeartAnimation(null), 1000);
+            lastTapRef.current = null;
+        } else {
+            lastTapRef.current = { time: now, reelId };
+        }
+    };
+
+    // Auto-slide carousel for image galleries
+    useEffect(() => {
+        const intervals: NodeJS.Timeout[] = [];
+
+        sampleReels.forEach((reel) => {
+            if (reel.type === 'image' && reel.images && reel.images.length > 1) {
+                const interval = setInterval(() => {
+                    setCarouselIndexes((prev) => {
+                        const currentIndex = prev[reel.id] || 0;
+                        const nextIndex = (currentIndex + 1) % reel.images!.length;
+                        return { ...prev, [reel.id]: nextIndex };
+                    });
+                }, 5000);
+                intervals.push(interval);
+            }
+        });
+
+        return () => intervals.forEach(clearInterval);
+    }, []);
+
+
+
     return (
         <div
             ref={containerRef}
@@ -116,23 +167,74 @@ export function VideoFeed() {
                 const isLiked = likedReels.includes(reel.id);
                 const isExpanded = expandedReels.includes(reel.id);
                 const description = reel.description || `Menikmati ${reel.product} yang lezat. #kuliner #umkm`;
+                const currentCarouselIndex = carouselIndexes[reel.id] || 0;
+                const isImageGallery = reel.type === 'image' && reel.images && reel.images.length > 0;
+                const displayImage = isImageGallery ? reel.images![currentCarouselIndex] : reel.thumbnail;
 
                 return (
                     <div
                         key={reel.id}
-                        className="relative h-full w-full snap-center snap-always flex items-center justify-center p-4 md:p-4"
+                        className="relative h-full w-full snap-center snap-always flex items-center justify-center pb-5 md:pb-5"
+                        onDoubleClick={() => handleDoubleTap(reel.id)}
+                        onTouchEnd={(e) => {
+                            if (e.touches.length === 0) handleDoubleTap(reel.id);
+                        }}
                     >
                         {/* Desktop Layout Container */}
                         <div className="relative flex h-full w-full md:w-auto md:max-w-4xl items-center justify-center gap-4">
 
-                            {/* Video Player Container */}
-                            <div className="relative h-full w-full rounded-xl md:aspect-[9/16] md:h-[95%] md:w-auto md:rounded-xl overflow-hidden bg-gray-900 shadow-2xl flex items-center justify-center">
-                                {/* Image as Video Placeholder */}
-                                <img
-                                    src={reel.thumbnail}
-                                    alt={reel.product}
-                                    className="h-full w-full object-cover object-center opacity-90"
-                                />
+                            {/* Video/Image Player Container */}
+                            <div className="relative h-full w-full md:aspect-[9/16] md:h-[95%] md:w-auto overflow-hidden bg-gray-900 shadow-2xl flex items-center justify-center">
+                                {/* Image/Carousel Display with Slide Animation */}
+                                <div className="relative h-full w-full overflow-hidden">
+                                    {isImageGallery && reel.images ? (
+                                        reel.images.map((img, idx) => (
+                                            <img
+                                                key={idx}
+                                                src={img}
+                                                alt={`${reel.product} ${idx + 1}`}
+                                                className={cn(
+                                                    "absolute inset-0 h-full w-full object-cover object-center opacity-90 transition-all duration-700 ease-in-out",
+                                                    idx === currentCarouselIndex
+                                                        ? "translate-x-0 opacity-90"
+                                                        : idx < currentCarouselIndex
+                                                        ? "-translate-x-full opacity-0"
+                                                        : "translate-x-full opacity-0"
+                                                )}
+                                            />
+                                        ))
+                                    ) : (
+                                        <img
+                                            src={displayImage}
+                                            alt={reel.product}
+                                            className="h-full w-full object-cover object-center opacity-90"
+                                        />
+                                    )}
+                                </div>
+
+                                {/* Carousel Indicators for Image Galleries */}
+                                {isImageGallery && reel.images!.length > 1 && (
+                                    <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                                        {reel.images!.map((_, idx) => (
+                                            <div
+                                                key={idx}
+                                                className={cn(
+                                                    "h-1 transition-all duration-300",
+                                                    idx === currentCarouselIndex
+                                                        ? "w-8 bg-white"
+                                                        : "w-1.5 bg-white/50"
+                                                )}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Double Tap Heart Animation */}
+                                {showHeartAnimation === reel.id && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+                                        <Heart className="h-24 w-24 text-white fill-white animate-ping" />
+                                    </div>
+                                )}
 
                                 {/* Overlay Gradient (Mobile Style) */}
                                 <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
@@ -161,10 +263,6 @@ export function VideoFeed() {
                                             </button>
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-2 text-xs font-semibold">
-                                        <Music2 className="h-3 w-3 animate-spin-slow" />
-                                        <span className="truncate max-w-[180px]">Original Sound - {reel.umkmName}</span>
-                                    </div>
                                 </div>
                             </div>
 
@@ -186,14 +284,7 @@ export function VideoFeed() {
                                 />
 
                                 {/* WhatsApp Button */}
-                                <button className="flex flex-col items-center gap-1 group transition-transform active:scale-95 text-gray-800 dark:text-gray-200">
-                                    <div className="rounded-full p-3 transition-colors bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/20">
-                                        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 md:h-7 md:w-7">
-                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                                        </svg>
-                                    </div>
-                                    <span className="text-xs font-semibold">Pesan</span>
-                                </button>
+                                <WhatsAppButton />
 
                                 <ActionButton icon={Share2} label="Share" onClick={() => { }} />
 
@@ -237,21 +328,14 @@ export function VideoFeed() {
                                 />
 
                                 {/* Mobile WhatsApp Button */}
-                                <button className="flex flex-col items-center gap-1 group transition-transform active:scale-95 text-white">
-                                    <div className="rounded-full p-3 transition-colors bg-black/20 backdrop-blur-sm">
-                                        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
-                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                                        </svg>
-                                    </div>
-                                    <span className="text-xs font-semibold drop-shadow-md">Pesan</span>
-                                </button>
+                                <WhatsAppButton overlay />
 
                                 <ActionButton icon={Share2} label="Share" color="text-white" overlay onClick={() => { }} />
                             </div>
 
                             {/* Mobile Top Right Search Button */}
                             <div className="absolute top-4 right-4 z-20 md:hidden">
-                                <Link href="/search" className="flex h-10 w-10 items-center justify-center rounded-full bg-black/20 backdrop-blur-sm text-white">
+                                <Link href="/search" className="flex h-10 w-10 items-center justify-center rounded-full bg-black/20 backdrop-blur-sm text-white hover:bg-black/30 transition-all active:scale-95">
                                     <Search className="h-6 w-6" />
                                 </Link>
                             </div>
@@ -264,21 +348,73 @@ export function VideoFeed() {
     );
 }
 
-function ActionButton({ icon: Icon, label, color = "", fill = false, overlay = false, onClick }: { icon: any, label: string | number, color?: string, fill?: boolean, overlay?: boolean, onClick?: () => void }) {
+// WhatsApp Button Component with Animation
+function WhatsAppButton({ overlay = false }: { overlay?: boolean }) {
+    const [isPressed, setIsPressed] = useState(false);
+
+    const handleClick = () => {
+        setIsPressed(true);
+        setTimeout(() => setIsPressed(false), 300);
+    };
+
     return (
         <button
-            onClick={onClick}
+            onClick={handleClick}
             className={cn(
-                "flex flex-col items-center gap-1 group transition-transform active:scale-95",
+                "flex flex-col items-center gap-1 group transition-all duration-200",
+                isPressed ? "scale-90" : "scale-100 active:scale-95",
+                overlay ? "text-white" : "text-gray-800 dark:text-gray-200"
+            )}
+        >
+            <div className={cn(
+                "rounded-full p-3 transition-all duration-200 bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/20",
+                overlay && "bg-green-500/90 backdrop-blur-sm",
+                isPressed && "ring-2 ring-white/50 scale-110"
+            )}>
+                <svg viewBox="0 0 24 24" fill="currentColor" className={cn(
+                    "h-6 w-6 md:h-7 md:w-7 transition-all duration-200",
+                    isPressed && "scale-110"
+                )}>
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                </svg>
+            </div>
+            <span className={cn("text-xs font-semibold", overlay ? "drop-shadow-md" : "")}>Pesan</span>
+        </button>
+    );
+}
+
+// Action Button Component with Animation
+function ActionButton({ icon: Icon, label, color = "", fill = false, overlay = false, onClick }: { icon: any, label: string | number, color?: string, fill?: boolean, overlay?: boolean, onClick?: () => void }) {
+    const [isPressed, setIsPressed] = useState(false);
+
+    const handleClick = () => {
+        setIsPressed(true);
+        setTimeout(() => setIsPressed(false), 300);
+        onClick?.();
+    };
+
+    return (
+        <button
+            onClick={handleClick}
+            className={cn(
+                "flex flex-col items-center gap-1 group transition-all duration-200",
+                isPressed ? "scale-90" : "scale-100 active:scale-95",
                 overlay ? "text-white" : "text-gray-800 dark:text-gray-200"
             )}>
             <div className={cn(
-                "rounded-full p-3 transition-colors",
-                overlay ? "bg-black/20 backdrop-blur-sm" : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+                "rounded-full p-3 transition-all duration-200",
+                overlay ? "bg-black/20 backdrop-blur-sm hover:bg-black/30" : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700",
+                isPressed && "ring-2 ring-white/50"
             )}>
-                <Icon className={cn("h-6 w-6 md:h-7 md:w-7", color, fill ? "fill-red-500" : "")} />
+                <Icon className={cn(
+                    "h-6 w-6 md:h-7 md:w-7 transition-all duration-200",
+                    color,
+                    fill ? "fill-red-500" : "",
+                    isPressed && "scale-110"
+                )} />
             </div>
             <span className={cn("text-xs font-semibold", overlay ? "drop-shadow-md" : "")}>{label}</span>
         </button>
     );
 }
+
