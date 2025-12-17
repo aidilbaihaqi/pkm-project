@@ -3,17 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LocationPicker } from '@/components/ui/location-picker';
-import MockLayout from '@/layouts/mock-layout';
-import { type BreadcrumbItem } from '@/types';
+import { AppLayout } from '@/layouts/app-layout';
 import { Head, useForm } from '@inertiajs/react';
 import { Save } from 'lucide-react';
 import { type FormEvent } from 'react';
-
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Seller', href: '/seller' },
-    { title: 'Format Profil', href: '/seller/profile' },
-];
 
 interface ProfileForm {
     name: string;
@@ -48,12 +41,12 @@ export default function EditProfile() {
     };
 
     return (
-        <MockLayout breadcrumbs={breadcrumbs}>
+        <AppLayout>
             <Head title="Edit Profil Toko" />
 
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+            <div className="flex h-full flex-1 flex-col gap-4 p-4 pb-24 md:gap-8 md:p-8 md:pb-8">
                 <div className="mx-auto grid w-full max-w-2xl gap-2">
-                    <h1 className="text-3xl font-bold">Profil Toko</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Profil Toko</h1>
                     <p className="text-gray-500 dark:text-gray-400">
                         Lengkapi informasi toko Anda agar mudah ditemukan pembeli.
                     </p>
@@ -168,6 +161,6 @@ export default function EditProfile() {
                     </form>
                 </div>
             </div>
-        </MockLayout>
+        </AppLayout>
     );
 }

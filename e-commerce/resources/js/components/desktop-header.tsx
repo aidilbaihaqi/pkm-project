@@ -42,21 +42,25 @@ export function DesktopHeader() {
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Avatar className="h-8 w-8 cursor-pointer border border-gray-200">
-                                    <AvatarImage src={`https://ui-avatars.com/api/?name=${auth.user.name}`} />
-                                    <AvatarFallback>CN</AvatarFallback>
+                                    <AvatarImage src={auth.user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(auth.user.name)}`} />
+                                    <AvatarFallback>{auth.user.name.charAt(0).toUpperCase()}</AvatarFallback>
                                 </Avatar>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">
-                                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                                <DropdownMenuLabel>{auth.user.name}</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem>Profile</DropdownMenuItem>
-                                <DropdownMenuItem>Settings</DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/seller/profile">Profile</Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/settings">Settings</Link>
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <Link href="/logout" method="post" as="button" className="w-full">
-                                    <DropdownMenuItem className="text-red-500 cursor-pointer">
+                                <DropdownMenuItem asChild className="text-red-500 cursor-pointer">
+                                    <Link href="/logout" method="post" as="button" className="w-full text-left">
                                         Log out
-                                    </DropdownMenuItem>
-                                </Link>
+                                    </Link>
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
