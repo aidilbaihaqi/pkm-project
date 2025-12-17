@@ -171,14 +171,11 @@ export function VideoFeed() {
                             {/* Desktop Actions (Right Side Buttons like TikTok Desktop) */}
                             <div className="hidden md:flex flex-col gap-4 items-center justify-end h-[95%] pb-10">
                                 {/* Profile Button */}
-                                <div className="relative mb-2 cursor-pointer group">
+                                <Link href={`/umkm/${reel.umkmId || reel.id}`} className="relative mb-2 cursor-pointer group">
                                     <div className="h-12 w-12 rounded-full border-2 border-white p-0.5 overflow-hidden bg-gray-800 transition-transform group-hover:scale-105">
                                         <img src={`https://ui-avatars.com/api/?name=${reel.umkmName}&background=random`} alt="Avatar" className="h-full w-full object-cover rounded-full" />
                                     </div>
-                                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-red-500 p-0.5 text-white">
-                                        <div className="h-4 w-4 flex items-center justify-center text-[10px] font-bold">+</div>
-                                    </div>
-                                </div>
+                                </Link>
 
                                 <ActionButton
                                     icon={Heart}
@@ -205,7 +202,7 @@ export function VideoFeed() {
                                     <Button
                                         variant="secondary"
                                         size="icon"
-                                        className="rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700"
+                                        className="rounded-full bg-white hover:bg-gray-100 text-gray-800 shadow-lg border border-gray-200"
                                         onClick={() => scrollToReel(index - 1)}
                                         disabled={index === 0}
                                     >
@@ -214,7 +211,7 @@ export function VideoFeed() {
                                     <Button
                                         variant="secondary"
                                         size="icon"
-                                        className="rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700"
+                                        className="rounded-full bg-white hover:bg-gray-100 text-gray-800 shadow-lg border border-gray-200"
                                         onClick={() => scrollToReel(index + 1)}
                                         disabled={index === sampleReels.length - 1}
                                     >
@@ -225,14 +222,11 @@ export function VideoFeed() {
 
                             {/* Mobile Actions (Overlay Right) */}
                             <div className="absolute bottom-[130px] right-2 flex flex-col items-center gap-4 md:hidden z-20">
-                                <div className="relative">
+                                <Link href={`/umkm/${reel.umkmId || reel.id}`} className="relative">
                                     <div className="h-10 w-10 rounded-full border border-white p-0.5">
                                         <img src={`https://ui-avatars.com/api/?name=${reel.umkmName}`} className="h-full w-full rounded-full" />
                                     </div>
-                                    <div className="absolute -bottom-1 -right-0 bg-red-500 rounded-full p-0.5 text-white">
-                                        <PlusSquare className="h-3 w-3" />
-                                    </div>
-                                </div>
+                                </Link>
                                 <ActionButton
                                     icon={Heart}
                                     label={reel.likes + (isLiked ? 1 : 0)}

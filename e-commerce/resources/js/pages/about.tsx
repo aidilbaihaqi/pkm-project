@@ -139,7 +139,7 @@ export default function About() {
                 </div>
 
                 {/* Contact */}
-                <div className="rounded-2xl bg-gradient-to-r from-umkm-orange to-orange-500 p-6 md:p-8 text-white text-center">
+                <div className="rounded-2xl bg-umkm-orange p-6 md:p-8 text-white text-center">
                     <h2 className="text-xl font-bold mb-2">Ada Pertanyaan?</h2>
                     <p className="opacity-90 mb-4 text-sm">
                         Hubungi kami untuk informasi lebih lanjut
