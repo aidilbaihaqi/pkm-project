@@ -26,15 +26,6 @@ export function DesktopHeader() {
 
             {/* Right: Actions */}
             <div className="flex items-center gap-4">
-                {/* Upload Button */}
-                {auth.user && (
-                    <Button asChild variant="secondary" className="hidden gap-2 font-semibold md:flex">
-                        <Link href="/seller/upload">
-                            <PlusSquare className="h-4 w-4" />
-                            Upload
-                        </Link>
-                    </Button>
-                )}
 
                 {auth.user ? (
                     // Logged In Actions

@@ -11,15 +11,6 @@ export default function Login() {
             {/* TikTok-style Login - Full Screen */}
             <div className="min-h-[calc(100vh-4rem)] bg-white dark:bg-gray-900 text-gray-900 dark:text-white flex flex-col pb-20 md:pb-0">
 
-                {/* Header - Back Button */}
-                <header className="flex items-center justify-between p-4">
-                    <Link href="/" className="flex items-center gap-1 text-gray-900 dark:text-white hover:text-umkm-orange transition-colors">
-                        <ChevronLeft className="h-5 w-5" />
-                        <span className="text-sm">Kembali</span>
-                    </Link>
-                    <div className="w-16" /> {/* Spacer for balance */}
-                </header>
-
                 {/* Main Content */}
                 <main className="flex-1 flex flex-col items-center justify-center px-8 py-8">
 

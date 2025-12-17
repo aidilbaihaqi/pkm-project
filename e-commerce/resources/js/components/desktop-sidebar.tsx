@@ -39,8 +39,8 @@ export function DesktopSidebar() {
                         <SidebarItem href="/search" icon={Search} label="Search" active={isActive('/search')} />
                         <SidebarItem href="/" icon={Home} label="Home" active={isActive('/')} />
                         <SidebarItem href="/explore" icon={Compass} label="Explore" active={isActive('/explore')} />
-                        <SidebarItem href="/seller/upload" icon={PlusSquare} label="Upload" active={isActive('/seller/upload')} />
-                        <SidebarItem href="/seller/content" icon={Video} label="Konten" active={isActive('/seller/content')} />
+                        <SidebarItem href="/upload" icon={PlusSquare} label="Upload" active={isActive('/upload')} />
+                        <SidebarItem href="/content" icon={Video} label="Konten" active={isActive('/content')} />
                         <SidebarItem href="/seller/profile" icon={User} label="Profil" active={isActive('/seller/profile')} />
                     </>
                 ) : (
@@ -58,16 +58,16 @@ export function DesktopSidebar() {
             {/* Nearest UMKM (Dummy) - Only visible on LG screens and not on search page */}
             {!isSearchPage && (
                 <div className="hidden lg:block border-t border-gray-100 py-4 px-4 dark:border-gray-800">
-                    <p className="mb-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">UMKM Terdekat</p>
+                    <p className="mb-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">UMKM Terdekat</p>
                     <div className="space-y-3">
                         {[1, 2, 3, 4, 5].map((i) => (
-                            <div key={i} className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition-colors">
-                                <div className="h-8 w-8 rounded-full bg-gray-200 overflow-hidden">
+                            <div key={i} className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-1 rounded-lg transition-colors">
+                                <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
                                     <img src={`https://ui-avatars.com/api/?name=UMKM+${i}&background=random`} alt="" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h4 className="text-sm font-bold text-gray-900 truncate">UMKM {i}</h4>
-                                    <p className="text-xs text-gray-500 truncate flex items-center gap-1">
+                                    <h4 className="text-sm font-bold text-gray-900 dark:text-white truncate">UMKM {i}</h4>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate flex items-center gap-1">
                                         <MapPin className="h-3 w-3" />
                                         {i * 100}m
                                     </p>

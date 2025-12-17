@@ -13,10 +13,10 @@ export function MobileNav() {
 
     const NavItem = ({ href, icon: Icon, label, active }: { href: string; icon: any; label: string; active: boolean }) => {
         const isPressed = pressedItem === href;
-        
+
         return (
-            <Link 
-                href={href} 
+            <Link
+                href={href}
                 onTouchStart={() => setPressedItem(href)}
                 onTouchEnd={() => setTimeout(() => setPressedItem(null), 150)}
                 onClick={() => setPressedItem(href)}
@@ -53,13 +53,13 @@ export function MobileNav() {
                     <>
                         <NavItem href="/" icon={Home} label="Home" active={isActive('/')} />
                         <NavItem href="/explore" icon={Compass} label="Explore" active={isActive('/explore')} />
-                        <Link href="/seller/upload" className="flex flex-col items-center justify-center -mt-6">
+                        <Link href="/upload" className="flex flex-col items-center justify-center -mt-6">
                             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-teal-500 text-white shadow-lg shadow-teal-500/30 ring-4 ring-white dark:ring-gray-900">
                                 <PlusSquare className="h-6 w-6" />
                             </div>
                             <span className="mt-1 text-[10px] font-medium text-gray-500">Upload</span>
                         </Link>
-                        <NavItem href="/seller/content" icon={Video} label="Konten" active={isActive('/seller/content')} />
+                        <NavItem href="/content" icon={Video} label="Konten" active={isActive('/content')} />
                         <NavItem href="/seller/profile" icon={User} label="Profil" active={isActive('/seller/profile')} />
                     </>
                 ) : (

@@ -55,6 +55,14 @@ Route::middleware([
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
+
+    Route::get('upload', function () {
+        return Inertia::render('seller/upload');
+    })->name('upload');
+
+    Route::get('content', function () {
+        return Inertia::render('seller/content');
+    })->name('content');
 });
 
 /*

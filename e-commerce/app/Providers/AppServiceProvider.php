@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use GuzzleHttp\Client;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -15,7 +16,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Disable SSL verification for local development (fixes WorkOS SSL error)
+        if ($this->app->environment('local', 'development')) {
+            $this->app->bind(Client::class, function () {
+                return new Client([
+                    'verify' => false,
+                ]);
+            });
+        }
     }
 
     /**

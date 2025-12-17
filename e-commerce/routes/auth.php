@@ -24,6 +24,19 @@ Route::get('authenticate', function (AuthKitAuthenticationRequest $request) {
     try {
         $user = $request->authenticate(
             createUsing: function (WorkOSUser $workosUser) {
+                // Check if user already exists by email
+                $existingUser = User::where('email', $workosUser->email)->first();
+                
+                if ($existingUser) {
+                    // Update existing user with WorkOS info
+                    $existingUser->update([
+                        'workos_id' => $workosUser->id,
+                        'avatar' => $workosUser->avatar ?? $existingUser->avatar,
+                    ]);
+                    return $existingUser;
+                }
+                
+                // Create new user
                 return User::create([
                     'name' => trim($workosUser->firstName . ' ' . $workosUser->lastName),
                     'email' => $workosUser->email,
@@ -55,5 +68,5 @@ Route::get('authenticate', function (AuthKitAuthenticationRequest $request) {
 
 // Handle logout
 Route::post('logout', function (AuthKitLogoutRequest $request) {
-    return $request->logout();
+    return $request->logout('/');
 })->middleware(['auth'])->name('logout');
