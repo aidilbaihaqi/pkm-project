@@ -324,7 +324,7 @@ export default function Content() {
                     <Button asChild className="bg-umkm-orange hover:bg-umkm-orange-dark">
                         <Link href="/upload" className="inline-flex items-center gap-2">
                             <PlusCircle className="h-4 w-4" />
-                            Upload Video
+                            Upload Konten
                         </Link>
                     </Button>
                 </div>

@@ -50,7 +50,7 @@ export default function Search() {
                             type="text"
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder="staycation sama pacar"
+                            placeholder="kue kering homemade"
                             className="w-full bg-gray-100 dark:bg-gray-800 border-none rounded-full py-3 pl-4 pr-10 text-base focus:ring-1 focus:ring-gray-300 placeholder:text-gray-400"
                             autoFocus
                         />
