@@ -20,6 +20,7 @@ interface Reel {
     images?: string[]; // For carousel/gallery
     videoUrl?: string; // Video URL for video type
     type?: 'video' | 'image'; // Content type
+    orientation?: 'portrait' | 'landscape'; // Video orientation
 }
 
 // Sample Data (Need to be consistent with ReelsGrid)
@@ -38,6 +39,7 @@ const initialReels: Reel[] = [
         comments: 42,
         type: 'video',
         videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+        // orientation: 'landscape', // Kept for future use
     },
     {
         id: 2,
@@ -142,6 +144,7 @@ export function VideoFeed() {
     const [activeIndex, setActiveIndex] = useState(0);
     const [isMuted, setIsMuted] = useState(true);
     const [expandedReels, setExpandedReels] = useState<number[]>([]);
+    const [viewedReels, setViewedReels] = useState<Set<number>>(new Set()); // Track viewed videos
     const [carouselIndexes, setCarouselIndexes] = useState<Record<number, number>>({});
     const [showHeartAnimation, setShowHeartAnimation] = useState<number | null>(null);
     const lastTapRef = useRef<{ time: number; reelId: number } | null>(null);
@@ -289,7 +292,24 @@ export function VideoFeed() {
         const index = Math.round(scrollTop / height);
         if (index !== activeIndex) {
             setActiveIndex(index);
+            // Track view event when video comes into view
+            if (reels[index] && !viewedReels.has(reels[index].id)) {
+                trackView(reels[index]);
+            }
         }
+    };
+
+    // Track view event (simulated - ready for backend integration)
+    const trackView = (reel: Reel) => {
+        setViewedReels(prev => new Set([...prev, reel.id]));
+        console.log('[Engagement] View event:', {
+            event: 'view',
+            reelId: reel.id,
+            umkmId: reel.umkmId || reel.id,
+            umkmName: reel.umkmName,
+            timestamp: new Date().toISOString(),
+        });
+        // TODO: POST to /reels/{id}/events when backend is ready
     };
 
     const toggleMute = () => setIsMuted(prev => !prev);
@@ -421,6 +441,34 @@ export function VideoFeed() {
         );
     };
 
+    // Handle single tap (pause) and double tap (like)
+    const handleVideoTap = (reelId: number) => {
+        const now = Date.now();
+        const lastTap = lastTapRef.current;
+
+        // Double tap detection (within 300ms)
+        if (lastTap && lastTap.reelId === reelId && now - lastTap.time < 300) {
+            // Double tap - Like the video
+            if (!likedReels.includes(reelId)) {
+                toggleLike(reelId);
+                // Show heart animation
+                setShowHeartAnimation(reelId);
+                setTimeout(() => setShowHeartAnimation(null), 800);
+            }
+            lastTapRef.current = null;
+        } else {
+            // Single tap - Set timeout to check if it's actually a single tap
+            lastTapRef.current = { time: now, reelId };
+            setTimeout(() => {
+                // If lastTapRef still matches, it was a single tap
+                if (lastTapRef.current?.reelId === reelId && lastTapRef.current?.time === now) {
+                    toggleVideoPlay(reelId);
+                    lastTapRef.current = null;
+                }
+            }, 300);
+        }
+    };
+
     // Share video/profile handler
     const handleShare = async (reel: Reel) => {
         const shareUrl = typeof window !== 'undefined'
@@ -510,29 +558,49 @@ export function VideoFeed() {
                 return (
                     <div
                         key={reel.id}
-                        className="relative h-full w-full snap-center snap-always flex items-center justify-center pb-5 md:pb-5"
+                        className={cn(
+                            "relative h-full w-full snap-center snap-always pb-5 md:pb-5",
+                            reel.orientation === 'landscape'
+                                ? "flex flex-col items-center justify-center" // Landscape: stack vertically
+                                : "flex items-center justify-center" // Portrait: center
+                        )}
                         onDoubleClick={() => handleDoubleTap(reel.id)}
                         onTouchEnd={(e) => {
                             if (e.touches.length === 0) handleDoubleTap(reel.id);
                         }}
                     >
                         {/* Desktop Layout Container */}
-                        <div className="relative flex h-full w-full md:w-auto md:max-w-4xl items-center justify-center gap-4">
+                        <div className={cn(
+                            "relative flex md:w-auto md:max-w-4xl items-center justify-center gap-4",
+                            reel.orientation === 'landscape'
+                                ? "w-full h-auto flex-col" // Landscape: column layout
+                                : "h-full w-full" // Portrait: full size
+                        )}>
 
                             {/* Video/Image Player Container */}
                             <div
-                                className="relative h-full w-full md:aspect-[9/16] md:h-[95%] md:w-auto overflow-hidden bg-gray-900 shadow-2xl flex items-center justify-center"
+                                className={cn(
+                                    "relative w-full md:aspect-[9/16] md:h-[95%] md:w-auto overflow-hidden bg-black shadow-2xl flex items-center justify-center",
+                                    reel.orientation === 'landscape'
+                                        ? "h-auto aspect-video" // Landscape: auto height, 16:9 ratio
+                                        : "h-full" // Portrait: full height
+                                )}
                                 onTouchStart={(e) => isImageGallery && handleTouchStart(e, reel.id)}
                                 onTouchEnd={(e) => isImageGallery && reel.images && handleTouchEnd(e, reel.id, reel.images.length)}
                             >
                                 {/* Video/Image/Carousel Display */}
-                                <div className="relative h-full w-full overflow-hidden">
+                                <div className={cn(
+                                    "relative w-full overflow-hidden",
+                                    reel.orientation === 'landscape'
+                                        ? "h-full" // Landscape: fit container
+                                        : "h-full" // Portrait: full height
+                                )}>
                                     {/* Video Player */}
                                     {reel.type === 'video' && reel.videoUrl ? (
                                         <div
-                                            className="relative h-full w-full"
+                                            className="relative h-full w-full flex items-center justify-center bg-black"
                                             onClick={() => {
-                                                toggleVideoPlay(reel.id);
+                                                handleVideoTap(reel.id);
                                                 handleShowControls(reel.id);
                                             }}
                                             onMouseMove={() => handleShowControls(reel.id)}
@@ -544,13 +612,18 @@ export function VideoFeed() {
                                                 loop
                                                 muted={isMuted}
                                                 playsInline
-                                                className="h-full w-full object-cover object-center"
+                                                className={cn(
+                                                    "h-full w-full object-center",
+                                                    reel.orientation === 'landscape'
+                                                        ? "object-contain bg-black" // Letterbox for landscape
+                                                        : "object-cover" // Crop for portrait (default)
+                                                )}
                                                 onTimeUpdate={() => handleTimeUpdate(reel.id)}
                                                 onPlay={() => handleVideoPlay(reel.id)}
                                                 onPause={() => handleVideoPause(reel.id)}
                                             />
 
-                                            {/* Play/Pause Overlay Icon */}
+                                            {/* Play/Pause Indicator */}
                                             <div className={cn(
                                                 "absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none",
                                                 showControls[reel.id] || !isPlaying[reel.id] ? "opacity-100" : "opacity-0"
@@ -563,6 +636,13 @@ export function VideoFeed() {
                                                     )}
                                                 </div>
                                             </div>
+
+                                            {/* Heart Animation (Double Tap Like) */}
+                                            {showHeartAnimation === reel.id && (
+                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
+                                                    <Heart className="h-24 w-24 text-red-500 fill-red-500 animate-ping" />
+                                                </div>
+                                            )}
 
                                             {/* Progress Bar Container - Draggable */}
                                             <div
@@ -647,8 +727,10 @@ export function VideoFeed() {
                                     </div>
                                 )}
 
-                                {/* Overlay Gradient (Mobile Style) */}
-                                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
+                                {/* Overlay Gradient (Mobile Style) - Only for Portrait */}
+                                {reel.orientation !== 'landscape' && (
+                                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
+                                )}
 
                                 {/* Mute Button */}
                                 <button
@@ -658,24 +740,69 @@ export function VideoFeed() {
                                     {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                                 </button>
 
-                                {/* Info Overlay (Inside Video) */}
-                                <div className="absolute bottom-0 left-0 w-[70%] p-4 pb-2 md:pb-4 text-white z-10">
-                                    <div className="mb-2">
-                                        <h3 className="text-base font-bold drop-shadow-md hover:underline cursor-pointer">@{reel.umkmName.replace(/\s+/g, '').toLowerCase()}</h3>
-                                        <p className={cn("text-sm drop-shadow-md opacity-90 mt-1", !isExpanded && "line-clamp-2")}>
-                                            {description}
-                                        </p>
-                                        {description.length > 60 && (
-                                            <button
-                                                onClick={() => toggleExpand(reel.id)}
-                                                className="text-teal-400 font-medium text-sm hover:underline mt-1"
-                                            >
-                                                {isExpanded ? 'sembunyikan' : 'selengkapnya'}
-                                            </button>
-                                        )}
+                                {/* Info Overlay (Inside Video) - Only for Portrait */}
+                                {reel.orientation !== 'landscape' && (
+                                    <div className="absolute left-0 bottom-0 w-[70%] p-4 pb-2 md:pb-4 text-white z-10">
+                                        <div className="mb-2">
+                                            <h3 className="text-base font-bold drop-shadow-md hover:underline cursor-pointer">@{reel.umkmName.replace(/\s+/g, '').toLowerCase()}</h3>
+                                            <p className={cn("text-sm drop-shadow-md opacity-90 mt-1", !isExpanded && "line-clamp-2")}>
+                                                {description}
+                                            </p>
+                                            {description.length > 60 && (
+                                                <button
+                                                    onClick={() => toggleExpand(reel.id)}
+                                                    className="text-teal-400 font-medium text-sm hover:underline mt-1"
+                                                >
+                                                    {isExpanded ? 'sembunyikan' : 'selengkapnya'}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
+
+                            {/* Landscape Content Section - Below Video (Mobile Only) */}
+                            {reel.orientation === 'landscape' && (
+                                <div className="w-full px-4 py-3 bg-black text-white md:hidden">
+                                    <div className="flex items-start justify-between gap-3">
+                                        {/* Left: Profile & Caption */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Link href={`/umkm/${reel.umkmId || reel.id}`}>
+                                                    <div className="h-8 w-8 rounded-full border border-white overflow-hidden">
+                                                        <img src={`https://ui-avatars.com/api/?name=${reel.umkmName}`} className="h-full w-full" />
+                                                    </div>
+                                                </Link>
+                                                <h3 className="text-sm font-bold">@{reel.umkmName.replace(/\s+/g, '').toLowerCase()}</h3>
+                                            </div>
+                                            <p className={cn("text-xs opacity-90", !isExpanded && "line-clamp-2")}>
+                                                {description}
+                                            </p>
+                                        </div>
+                                        {/* Right: Action Buttons */}
+                                        <div className="flex items-center gap-3">
+                                            <button onClick={() => toggleLike(reel.id)} className="flex flex-col items-center">
+                                                <Heart className={cn("h-6 w-6", isLiked ? "text-red-500 fill-red-500" : "text-white")} />
+                                                <span className="text-xs">{reel.likes + (isLiked ? 1 : 0)}</span>
+                                            </button>
+                                            <button onClick={() => handleShare(reel)} className="flex flex-col items-center">
+                                                <Share2 className="h-6 w-6 text-white" />
+                                                <span className="text-xs">Share</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {/* WhatsApp CTA */}
+                                    <button
+                                        onClick={() => {
+                                            const message = `Halo ${reel.umkmName}! Saya tertarik dengan produk *${reel.product}*...`;
+                                            window.open(`https://wa.me/${reel.whatsapp}?text=${encodeURIComponent(message)}`, '_blank');
+                                        }}
+                                        className="w-full mt-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium text-sm flex items-center justify-center gap-2"
+                                    >
+                                        💬 Chat WhatsApp
+                                    </button>
+                                </div>
+                            )}
 
                             {/* Desktop Actions (Right Side Buttons like TikTok Desktop) */}
                             <div className="hidden md:flex flex-col gap-4 items-center justify-end h-[95%] pb-10">
@@ -695,7 +822,12 @@ export function VideoFeed() {
                                 />
 
                                 {/* WhatsApp Button */}
-                                <WhatsAppButton />
+                                <WhatsAppButton
+                                    reelId={reel.id}
+                                    umkmName={reel.umkmName}
+                                    whatsapp={reel.whatsapp}
+                                    productName={reel.product}
+                                />
 
                                 <ActionButton icon={Share2} label="Share" onClick={() => handleShare(reel)} />
 
@@ -722,27 +854,35 @@ export function VideoFeed() {
                                 </div>
                             </div>
 
-                            {/* Mobile Actions (Overlay Right) */}
-                            <div className="absolute bottom-[130px] right-2 flex flex-col items-center gap-4 md:hidden z-20">
-                                <Link href={`/umkm/${reel.umkmId || reel.id}`} className="relative">
-                                    <div className="h-10 w-10 rounded-full border border-white p-0.5">
-                                        <img src={`https://ui-avatars.com/api/?name=${reel.umkmName}`} className="h-full w-full rounded-full" />
-                                    </div>
-                                </Link>
-                                <ActionButton
-                                    icon={Heart}
-                                    label={reel.likes + (isLiked ? 1 : 0)}
-                                    color={isLiked ? "text-red-500" : "text-white"}
-                                    fill={isLiked}
-                                    overlay
-                                    onClick={() => toggleLike(reel.id)}
-                                />
+                            {/* Mobile Actions (Overlay Right) - Only for Portrait */}
+                            {reel.orientation !== 'landscape' && (
+                                <div className="absolute right-2 bottom-[130px] flex flex-col items-center gap-4 md:hidden z-20">
+                                    <Link href={`/umkm/${reel.umkmId || reel.id}`} className="relative">
+                                        <div className="h-10 w-10 rounded-full border border-white p-0.5">
+                                            <img src={`https://ui-avatars.com/api/?name=${reel.umkmName}`} className="h-full w-full rounded-full" />
+                                        </div>
+                                    </Link>
+                                    <ActionButton
+                                        icon={Heart}
+                                        label={reel.likes + (isLiked ? 1 : 0)}
+                                        color={isLiked ? "text-red-500" : "text-white"}
+                                        fill={isLiked}
+                                        overlay
+                                        onClick={() => toggleLike(reel.id)}
+                                    />
 
-                                {/* Mobile WhatsApp Button */}
-                                <WhatsAppButton overlay />
+                                    {/* Mobile WhatsApp Button */}
+                                    <WhatsAppButton
+                                        overlay
+                                        reelId={reel.id}
+                                        umkmName={reel.umkmName}
+                                        whatsapp={reel.whatsapp}
+                                        productName={reel.product}
+                                    />
 
-                                <ActionButton icon={Share2} label="Share" color="text-white" overlay onClick={() => handleShare(reel)} />
-                            </div>
+                                    <ActionButton icon={Share2} label="Share" color="text-white" overlay onClick={() => handleShare(reel)} />
+                                </div>
+                            )}
 
                             {/* Mobile Top Right Search Button */}
                             <div className="absolute top-4 right-4 z-20 md:hidden">
@@ -776,12 +916,42 @@ export function VideoFeed() {
 }
 
 // WhatsApp Button Component with Animation
-function WhatsAppButton({ overlay = false }: { overlay?: boolean }) {
+function WhatsAppButton({
+    overlay = false,
+    reelId,
+    umkmName,
+    whatsapp,
+    productName
+}: {
+    overlay?: boolean;
+    reelId?: number;
+    umkmName?: string;
+    whatsapp?: string;
+    productName?: string;
+}) {
     const [isPressed, setIsPressed] = useState(false);
 
-    const handleClick = () => {
+    const handleClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
         setIsPressed(true);
         setTimeout(() => setIsPressed(false), 300);
+
+        // Track WhatsApp CTA click
+        console.log('[Engagement] Click CTA event:', {
+            event: 'click_wa',
+            reelId: reelId,
+            umkmName: umkmName,
+            timestamp: new Date().toISOString(),
+        });
+
+        // Open WhatsApp link
+        const phone = whatsapp?.replace(/\D/g, '') || '6281234567890'; // Remove non-digits
+        const message = encodeURIComponent(
+            `Halo ${umkmName || 'Kak'}! 👋\n\nSaya tertarik dengan produk *${productName || 'ini'}* yang saya lihat di UMKMku.\n\nApakah masih tersedia?`
+        );
+        const waLink = `https://wa.me/${phone}?text=${message}`;
+        window.open(waLink, '_blank');
     };
 
     return (

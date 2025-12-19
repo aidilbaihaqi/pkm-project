@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -150,7 +150,12 @@ const statusConfig = {
     review: { label: 'Review', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400', icon: AlertCircle },
 };
 
-function VideoCard({ video, viewMode }: { video: typeof mockVideos[0]; viewMode: 'grid' | 'list' }) {
+function VideoCard({ video, viewMode, onEdit, onDelete }: {
+    video: typeof mockVideos[0];
+    viewMode: 'grid' | 'list';
+    onEdit: (video: typeof mockVideos[0]) => void;
+    onDelete: (video: typeof mockVideos[0]) => void;
+}) {
     const [showMenu, setShowMenu] = useState(false);
     const status = statusConfig[video.status as keyof typeof statusConfig];
     const StatusIcon = status.icon;
@@ -205,11 +210,17 @@ function VideoCard({ video, viewMode }: { video: typeof mockVideos[0]; viewMode:
                     </button>
                     {showMenu && (
                         <div className="absolute right-0 top-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg shadow-lg py-1 z-10 min-w-[120px]">
-                            <button className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <button
+                                onClick={() => { onEdit(video); setShowMenu(false); }}
+                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            >
                                 <Edit className="h-4 w-4" />
                                 Edit
                             </button>
-                            <button className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <button
+                                onClick={() => { onDelete(video); setShowMenu(false); }}
+                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            >
                                 <Trash2 className="h-4 w-4" />
                                 Hapus
                             </button>
@@ -265,11 +276,17 @@ function VideoCard({ video, viewMode }: { video: typeof mockVideos[0]; viewMode:
                         </button>
                         {showMenu && (
                             <div className="absolute right-0 bottom-8 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg shadow-lg py-1 z-10 min-w-[120px]">
-                                <button className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <button
+                                    onClick={() => { onEdit(video); setShowMenu(false); }}
+                                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                >
                                     <Edit className="h-4 w-4" />
                                     Edit
                                 </button>
-                                <button className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <button
+                                    onClick={() => { onDelete(video); setShowMenu(false); }}
+                                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                >
                                     <Trash2 className="h-4 w-4" />
                                     Hapus
                                 </button>
@@ -287,6 +304,38 @@ export default function Content() {
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(6);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<typeof mockVideos[0] | null>(null);
+
+    // Show toast notification
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 5000); // 5 seconds
+    };
+
+    // Handle edit video
+    const handleEdit = (video: typeof mockVideos[0]) => {
+        // TODO: Implement edit modal or navigate to edit page
+        console.log('Editing video:', video.id);
+        showToast('Video berhasil diperbarui!', 'success');
+        // Redirect ke halaman content (refresh)
+        router.visit('/content', { preserveScroll: true });
+    };
+
+    // Handle delete video - show confirmation modal
+    const handleDelete = (video: typeof mockVideos[0]) => {
+        setDeleteConfirm(video);
+    };
+
+    // Confirm delete
+    const confirmDelete = () => {
+        if (deleteConfirm) {
+            console.log('Deleting video:', deleteConfirm.id);
+            showToast('Video berhasil dihapus!', 'success');
+            setDeleteConfirm(null);
+            router.visit('/content', { preserveScroll: true });
+        }
+    };
 
     const filteredVideos = statusFilter === 'all'
         ? mockVideos
@@ -393,7 +442,13 @@ export default function Content() {
                             : 'space-y-3'
                         }>
                             {paginatedVideos.map((video) => (
-                                <VideoCard key={video.id} video={video} viewMode={viewMode} />
+                                <VideoCard
+                                    key={video.id}
+                                    video={video}
+                                    viewMode={viewMode}
+                                    onEdit={handleEdit}
+                                    onDelete={handleDelete}
+                                />
                             ))}
                         </div>
 
@@ -466,6 +521,49 @@ export default function Content() {
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
+                        <div className="text-center">
+                            <div className="mx-auto w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
+                                <Trash2 className="h-6 w-6 text-red-600 dark:text-red-400" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Hapus Video?</h3>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
+                                Video "<span className="font-medium text-gray-700 dark:text-gray-300">{deleteConfirm.title}</span>" akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
+                            </p>
+                            <div className="flex gap-3">
+                                <Button
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={() => setDeleteConfirm(null)}
+                                >
+                                    Batal
+                                </Button>
+                                <Button
+                                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                                    onClick={confirmDelete}
+                                >
+                                    Ya, Hapus
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Toast Notification */}
+            {toast && (
+                <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 fade-in duration-700">
+                    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white min-w-[280px] ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+                        }`}>
+                        <CheckCircle className="h-5 w-5" />
+                        <span className="text-sm font-medium">{toast.message}</span>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }
