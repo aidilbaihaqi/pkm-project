@@ -39,7 +39,7 @@ const initialReels: Reel[] = [
         comments: 42,
         type: 'video',
         videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
-        // orientation: 'landscape', // Kept for future use
+        orientation: 'landscape', // Landscape video
     },
     {
         id: 2,
@@ -157,6 +157,10 @@ export function VideoFeed() {
     // Swipe handling for carousel
     const touchStartRef = useRef<{ x: number; y: number } | null>(null);
     const [isPaused, setIsPaused] = useState<Record<number, boolean>>({});
+
+    // Mobile view mode for landscape videos: 'portrait' (fit in portrait container) or 'landscape' (fullscreen-like)
+    const [mobileViewMode, setMobileViewMode] = useState<Record<number, 'portrait' | 'landscape'>>({});
+
 
     // Load more reels (simulated API call)
     const loadMoreReels = useCallback(() => {
@@ -560,9 +564,13 @@ export function VideoFeed() {
                         key={reel.id}
                         className={cn(
                             "relative h-full w-full snap-center snap-always pb-5 md:pb-5",
+                            // Desktop: landscape videos use flex-col for action buttons position
+                            // Mobile: always use portrait-like layout unless user selects landscape mode
                             reel.orientation === 'landscape'
-                                ? "flex flex-col items-center justify-center" // Landscape: stack vertically
-                                : "flex items-center justify-center" // Portrait: center
+                                ? mobileViewMode[reel.id] === 'landscape'
+                                    ? "flex flex-col items-center justify-center" // Mobile landscape mode
+                                    : "flex flex-col md:flex-col items-center justify-center" // Mobile portrait, desktop landscape
+                                : "flex items-center justify-center" // Portrait videos
                         )}
                         onDoubleClick={() => handleDoubleTap(reel.id)}
                         onTouchEnd={(e) => {
@@ -571,19 +579,20 @@ export function VideoFeed() {
                     >
                         {/* Desktop Layout Container */}
                         <div className={cn(
-                            "relative flex md:w-auto md:max-w-4xl items-center justify-center gap-4",
+                            "relative flex items-center justify-center",
                             reel.orientation === 'landscape'
-                                ? "w-full h-auto flex-col" // Landscape: column layout
+                                ? "w-full h-full md:w-auto md:max-w-4xl md:flex-row md:gap-4" // Landscape: centered on mobile, row on desktop
                                 : "h-full w-full" // Portrait: full size
                         )}>
 
                             {/* Video/Image Player Container */}
                             <div
                                 className={cn(
-                                    "relative w-full md:aspect-[9/16] md:h-[95%] md:w-auto overflow-hidden bg-black shadow-2xl flex items-center justify-center",
+                                    "relative overflow-hidden bg-black shadow-2xl flex items-center justify-center",
                                     reel.orientation === 'landscape'
-                                        ? "h-auto aspect-video" // Landscape: auto height, 16:9 ratio
-                                        : "h-full" // Portrait: full height
+                                        // Landscape videos: always use aspect-video for proper 16:9 ratio
+                                        ? "w-full aspect-video max-w-full"
+                                        : "w-full h-full md:aspect-[9/16] md:h-[95%] md:w-auto" // Portrait videos
                                 )}
                                 onTouchStart={(e) => isImageGallery && handleTouchStart(e, reel.id)}
                                 onTouchEnd={(e) => isImageGallery && reel.images && handleTouchEnd(e, reel.id, reel.images.length)}
@@ -644,9 +653,9 @@ export function VideoFeed() {
                                                 </div>
                                             )}
 
-                                            {/* Progress Bar Container - Draggable */}
+                                            {/* Progress Bar Container - Hidden */}
                                             <div
-                                                className="absolute bottom-0 left-0 right-0 h-8 flex items-end cursor-pointer z-30 pointer-events-auto px-2 pb-2"
+                                                className="absolute bottom-0 left-0 right-0 h-8 items-end cursor-pointer z-30 pointer-events-auto px-2 pb-2 hidden"
                                                 onMouseDown={(e) => handleProgressMouseDown(e, reel.id)}
                                                 onTouchStart={(e) => handleProgressTouchStart(e, reel.id)}
                                                 onTouchMove={(e) => handleProgressTouchMove(e, reel.id)}
@@ -727,82 +736,39 @@ export function VideoFeed() {
                                     </div>
                                 )}
 
-                                {/* Overlay Gradient (Mobile Style) - Only for Portrait */}
-                                {reel.orientation !== 'landscape' && (
-                                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
-                                )}
+                                {/* Overlay Gradient (Mobile Style) */}
+                                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
 
-                                {/* Mute Button */}
+                                {/* Mute Button - Desktop Only */}
                                 <button
-                                    onClick={toggleMute}
-                                    className="absolute top-4 right-4 p-2 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors z-20"
+                                    onClick={(e) => { e.stopPropagation(); toggleMute(); }}
+                                    className="absolute top-4 left-4 p-2 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors z-20 hidden md:block"
                                 >
                                     {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                                 </button>
 
-                                {/* Info Overlay (Inside Video) - Only for Portrait */}
-                                {reel.orientation !== 'landscape' && (
-                                    <div className="absolute left-0 bottom-0 w-[70%] p-4 pb-2 md:pb-4 text-white z-10">
-                                        <div className="mb-2">
-                                            <h3 className="text-base font-bold drop-shadow-md hover:underline cursor-pointer">@{reel.umkmName.replace(/\s+/g, '').toLowerCase()}</h3>
-                                            <p className={cn("text-sm drop-shadow-md opacity-90 mt-1", !isExpanded && "line-clamp-2")}>
-                                                {description}
-                                            </p>
-                                            {description.length > 60 && (
-                                                <button
-                                                    onClick={() => toggleExpand(reel.id)}
-                                                    className="text-teal-400 font-medium text-sm hover:underline mt-1"
-                                                >
-                                                    {isExpanded ? 'sembunyikan' : 'selengkapnya'}
-                                                </button>
-                                            )}
-                                        </div>
+                                {/* Info Overlay (Inside Video) - Hidden on mobile for landscape videos */}
+                                <div className={cn(
+                                    "absolute left-0 bottom-0 w-[70%] p-4 pb-2 md:pb-4 text-white z-10",
+                                    reel.orientation === 'landscape' && "hidden md:block"
+                                )}>
+                                    <div className="mb-2">
+                                        <h3 className="text-base font-bold drop-shadow-md hover:underline cursor-pointer">@{reel.umkmName.replace(/\s+/g, '').toLowerCase()}</h3>
+                                        <p className={cn("text-sm drop-shadow-md opacity-90 mt-1", !isExpanded && "line-clamp-2")}>
+                                            {description}
+                                        </p>
+                                        {description.length > 60 && (
+                                            <button
+                                                onClick={() => toggleExpand(reel.id)}
+                                                className="text-teal-400 font-medium text-sm hover:underline mt-1"
+                                            >
+                                                {isExpanded ? 'sembunyikan' : 'selengkapnya'}
+                                            </button>
+                                        )}
                                     </div>
-                                )}
+                                </div>
                             </div>
 
-                            {/* Landscape Content Section - Below Video (Mobile Only) */}
-                            {reel.orientation === 'landscape' && (
-                                <div className="w-full px-4 py-3 bg-black text-white md:hidden">
-                                    <div className="flex items-start justify-between gap-3">
-                                        {/* Left: Profile & Caption */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <Link href={`/umkm/${reel.umkmId || reel.id}`}>
-                                                    <div className="h-8 w-8 rounded-full border border-white overflow-hidden">
-                                                        <img src={`https://ui-avatars.com/api/?name=${reel.umkmName}`} className="h-full w-full" />
-                                                    </div>
-                                                </Link>
-                                                <h3 className="text-sm font-bold">@{reel.umkmName.replace(/\s+/g, '').toLowerCase()}</h3>
-                                            </div>
-                                            <p className={cn("text-xs opacity-90", !isExpanded && "line-clamp-2")}>
-                                                {description}
-                                            </p>
-                                        </div>
-                                        {/* Right: Action Buttons */}
-                                        <div className="flex items-center gap-3">
-                                            <button onClick={() => toggleLike(reel.id)} className="flex flex-col items-center">
-                                                <Heart className={cn("h-6 w-6", isLiked ? "text-red-500 fill-red-500" : "text-white")} />
-                                                <span className="text-xs">{reel.likes + (isLiked ? 1 : 0)}</span>
-                                            </button>
-                                            <button onClick={() => handleShare(reel)} className="flex flex-col items-center">
-                                                <Share2 className="h-6 w-6 text-white" />
-                                                <span className="text-xs">Share</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    {/* WhatsApp CTA */}
-                                    <button
-                                        onClick={() => {
-                                            const message = `Halo ${reel.umkmName}! Saya tertarik dengan produk *${reel.product}*...`;
-                                            window.open(`https://wa.me/${reel.whatsapp}?text=${encodeURIComponent(message)}`, '_blank');
-                                        }}
-                                        className="w-full mt-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium text-sm flex items-center justify-center gap-2"
-                                    >
-                                        💬 Chat WhatsApp
-                                    </button>
-                                </div>
-                            )}
 
                             {/* Desktop Actions (Right Side Buttons like TikTok Desktop) */}
                             <div className="hidden md:flex flex-col gap-4 items-center justify-end h-[95%] pb-10">
@@ -829,7 +795,7 @@ export function VideoFeed() {
                                     productName={reel.product}
                                 />
 
-                                <ActionButton icon={Share2} label="Share" onClick={() => handleShare(reel)} />
+                                <ActionButton icon={Share2} label="Bagikan" onClick={() => handleShare(reel)} />
 
                                 {/* Navigation Arrows */}
                                 <div className="mt-8 flex flex-col gap-2">
@@ -854,35 +820,36 @@ export function VideoFeed() {
                                 </div>
                             </div>
 
-                            {/* Mobile Actions (Overlay Right) - Only for Portrait */}
-                            {reel.orientation !== 'landscape' && (
-                                <div className="absolute right-2 bottom-[130px] flex flex-col items-center gap-4 md:hidden z-20">
-                                    <Link href={`/umkm/${reel.umkmId || reel.id}`} className="relative">
-                                        <div className="h-10 w-10 rounded-full border border-white p-0.5">
-                                            <img src={`https://ui-avatars.com/api/?name=${reel.umkmName}`} className="h-full w-full rounded-full" />
-                                        </div>
-                                    </Link>
-                                    <ActionButton
-                                        icon={Heart}
-                                        label={reel.likes + (isLiked ? 1 : 0)}
-                                        color={isLiked ? "text-red-500" : "text-white"}
-                                        fill={isLiked}
-                                        overlay
-                                        onClick={() => toggleLike(reel.id)}
-                                    />
+                            {/* Mobile Actions (Overlay Right) */}
+                            <div className={cn(
+                                "absolute right-2 bottom-0 flex flex-col items-center gap-3 md:hidden z-20",
+                                reel.orientation === 'landscape' && "translate-y-1/3"
+                            )}>
+                                <Link href={`/umkm/${reel.umkmId || reel.id}`} className="relative">
+                                    <div className="h-12 w-12 rounded-full border border-white p-0.5">
+                                        <img src={`https://ui-avatars.com/api/?name=${reel.umkmName}`} className="h-full w-full rounded-full" />
+                                    </div>
+                                </Link>
+                                <ActionButton
+                                    icon={Heart}
+                                    label={reel.likes + (isLiked ? 1 : 0)}
+                                    color={isLiked ? "text-red-500" : "text-white"}
+                                    fill={isLiked}
+                                    overlay
+                                    onClick={() => toggleLike(reel.id)}
+                                />
 
-                                    {/* Mobile WhatsApp Button */}
-                                    <WhatsAppButton
-                                        overlay
-                                        reelId={reel.id}
-                                        umkmName={reel.umkmName}
-                                        whatsapp={reel.whatsapp}
-                                        productName={reel.product}
-                                    />
+                                {/* Mobile WhatsApp Button */}
+                                <WhatsAppButton
+                                    overlay
+                                    reelId={reel.id}
+                                    umkmName={reel.umkmName}
+                                    whatsapp={reel.whatsapp}
+                                    productName={reel.product}
+                                />
 
-                                    <ActionButton icon={Share2} label="Share" color="text-white" overlay onClick={() => handleShare(reel)} />
-                                </div>
-                            )}
+                                <ActionButton icon={Share2} label="Bagikan" color="text-white" overlay onClick={() => handleShare(reel)} />
+                            </div>
 
                             {/* Mobile Top Right Search Button */}
                             <div className="absolute top-4 right-4 z-20 md:hidden">
@@ -892,6 +859,59 @@ export function VideoFeed() {
                             </div>
 
                         </div>
+
+                        {/* Mobile Landscape: Instagram-style Layout Below Video */}
+                        {reel.orientation === 'landscape' && (
+                            <div className="w-full px-3 py-2 md:hidden">
+                                {/* Layar Penuh Button - Centered */}
+                                <div className="flex items-center justify-center mb-3">
+                                    {/* Layar Penuh Button - Left aligned like Instagram */}
+                                    <button
+                                        onClick={() => setMobileViewMode(prev => ({
+                                            ...prev,
+                                            [reel.id]: prev[reel.id] === 'landscape' ? 'portrait' : 'landscape'
+                                        }))}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-800/80 text-white text-xs font-medium border border-white/20"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                        </svg>
+                                        Layar penuh
+                                    </button>
+                                </div>
+
+                                {/* Info Section - Instagram style with ...banyak truncation */}
+                                <div className="text-white pr-14">
+                                    <h3 className="text-sm font-bold">@{reel.umkmName.replace(/\s+/g, '').toLowerCase()}</h3>
+                                    <p className="text-sm mt-0.5">
+                                        {!isExpanded && description.length > 50 ? (
+                                            <>
+                                                {description.substring(0, 50)}...
+                                                <button
+                                                    onClick={() => toggleExpand(reel.id)}
+                                                    className="text-gray-400 ml-1"
+                                                >
+                                                    banyak
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {description}
+                                                {description.length > 50 && (
+                                                    <button
+                                                        onClick={() => toggleExpand(reel.id)}
+                                                        className="text-gray-400 ml-1"
+                                                    >
+                                                        sembunyikan
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
                     </div>
                 );
             })}
@@ -911,7 +931,7 @@ export function VideoFeed() {
                     <p className="text-white/60 text-sm">Sudah mencapai akhir</p>
                 )}
             </div>
-        </div>
+        </div >
     );
 }
 

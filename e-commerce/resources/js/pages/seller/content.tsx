@@ -215,7 +215,7 @@ function VideoCard({ video, viewMode, onEdit, onDelete }: {
                                 className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                             >
                                 <Edit className="h-4 w-4" />
-                                Edit
+                                Ubah
                             </button>
                             <button
                                 onClick={() => { onDelete(video); setShowMenu(false); }}
@@ -484,7 +484,7 @@ export default function Content() {
                                             disabled={currentPage === 1}
                                             className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            Prev
+                                            Sebelumnya
                                         </button>
                                         {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                                             <button
@@ -503,7 +503,7 @@ export default function Content() {
                                             disabled={currentPage === totalPages}
                                             className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            Next
+                                            Berikutnya
                                         </button>
                                     </div>
                                 </div>

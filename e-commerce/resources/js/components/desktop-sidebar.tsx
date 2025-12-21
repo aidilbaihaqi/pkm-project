@@ -36,21 +36,21 @@ export function DesktopSidebar() {
                 {auth.user ? (
                     // Seller Menu
                     <>
-                        <SidebarItem href="/search" icon={Search} label="Search" active={isActive('/search')} />
-                        <SidebarItem href="/" icon={Home} label="Home" active={isActive('/')} />
-                        <SidebarItem href="/explore" icon={Compass} label="Explore" active={isActive('/explore')} />
-                        <SidebarItem href="/upload" icon={PlusSquare} label="Upload" active={isActive('/upload')} />
+                        <SidebarItem href="/search" icon={Search} label="Cari" active={isActive('/search')} />
+                        <SidebarItem href="/" icon={Home} label="Beranda" active={isActive('/')} />
+                        <SidebarItem href="/explore" icon={Compass} label="Jelajahi" active={isActive('/explore')} />
+                        <SidebarItem href="/upload" icon={PlusSquare} label="Unggah" active={isActive('/upload')} />
                         <SidebarItem href="/content" icon={Video} label="Konten" active={isActive('/content')} />
                         <SidebarItem href="/seller/profile" icon={User} label="Profil" active={isActive('/seller/profile')} />
                     </>
                 ) : (
                     // Guest Menu
                     <>
-                        <SidebarItem href="/search" icon={Search} label="Search" active={isActive('/search')} />
-                        <SidebarItem href="/" icon={Home} label="Home" active={isActive('/')} />
-                        <SidebarItem href="/explore" icon={Compass} label="Explore" active={isActive('/explore')} />
-                        <SidebarItem href="/register-seller" icon={Store} label="Join UMKM" active={isActive('/register-seller')} />
-                        <SidebarItem href="/about" icon={Info} label="About" active={isActive('/about')} />
+                        <SidebarItem href="/search" icon={Search} label="Cari" active={isActive('/search')} />
+                        <SidebarItem href="/" icon={Home} label="Beranda" active={isActive('/')} />
+                        <SidebarItem href="/explore" icon={Compass} label="Jelajahi" active={isActive('/explore')} />
+                        <SidebarItem href="/register-seller" icon={Store} label="Gabung UMKM" active={isActive('/register-seller')} />
+                        <SidebarItem href="/about" icon={Info} label="Tentang" active={isActive('/about')} />
                     </>
                 )}
             </div>

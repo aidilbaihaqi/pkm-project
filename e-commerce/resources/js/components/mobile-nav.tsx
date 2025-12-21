@@ -51,13 +51,13 @@ export function MobileNav() {
                 {auth.user ? (
                     // Seller Navigation
                     <>
-                        <NavItem href="/" icon={Home} label="Home" active={isActive('/')} />
-                        <NavItem href="/explore" icon={Compass} label="Explore" active={isActive('/explore')} />
+                        <NavItem href="/" icon={Home} label="Beranda" active={isActive('/')} />
+                        <NavItem href="/explore" icon={Compass} label="Jelajahi" active={isActive('/explore')} />
                         <Link href="/upload" className="flex flex-col items-center justify-center -mt-6">
                             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-teal-500 text-white shadow-lg shadow-teal-500/30 ring-4 ring-white dark:ring-gray-900">
                                 <PlusSquare className="h-6 w-6" />
                             </div>
-                            <span className="mt-1 text-[10px] font-medium text-gray-500">Upload</span>
+                            <span className="mt-1 text-[10px] font-medium text-gray-500">Unggah</span>
                         </Link>
                         <NavItem href="/content" icon={Video} label="Konten" active={isActive('/content')} />
                         <NavItem href="/seller/profile" icon={User} label="Profil" active={isActive('/seller/profile')} />
@@ -65,18 +65,18 @@ export function MobileNav() {
                 ) : (
                     // Guest Navigation
                     <>
-                        <NavItem href="/" icon={Home} label="Home" active={isActive('/')} />
-                        <NavItem href="/explore" icon={Compass} label="Explore" active={isActive('/explore')} />
+                        <NavItem href="/" icon={Home} label="Beranda" active={isActive('/')} />
+                        <NavItem href="/explore" icon={Compass} label="Jelajahi" active={isActive('/explore')} />
 
                         {/* Center Join Button - Floating style */}
                         <Link href="/register-seller" className="flex flex-col items-center justify-center -mt-6 px-2">
                             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-red-500 to-pink-600 text-white shadow-lg shadow-red-500/30 ring-4 ring-white dark:ring-gray-900 animate-pulse">
                                 <Store className="h-6 w-6" />
                             </div>
-                            <span className="mt-1 text-[10px] font-bold text-gray-900 dark:text-gray-100">Join</span>
+                            <span className="mt-1 text-[10px] font-bold text-gray-900 dark:text-gray-100">Gabung</span>
                         </Link>
 
-                        <NavItem href="/about" icon={Info} label="About" active={isActive('/about')} />
+                        <NavItem href="/about" icon={Info} label="Tentang" active={isActive('/about')} />
                         <NavItem href="/login" icon={User} label="Masuk" active={isActive('/login')} />
                     </>
                 )}
