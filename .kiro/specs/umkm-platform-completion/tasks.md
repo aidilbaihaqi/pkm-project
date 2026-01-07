@@ -6,27 +6,27 @@ Plan implementasi untuk menyelesaikan backend API dan integrasi frontend PKM Hyp
 
 ## Tasks
 
-- [-] 1. Database Migrations dan Models
-  - [ ] 1.1 Create migration untuk `umkm_profiles` table
+- [x] 1. Database Migrations dan Models
+  - [x] 1.1 Create migration untuk `umkm_profiles` table
     - Fields: user_id, nama_toko, nomor_wa, alamat, latitude, longitude, kategori, deskripsi, avatar, is_open, open_hours, is_blocked
     - Foreign key ke users table
     - _Requirements: 1.1, 8.1_
-  - [ ] 1.2 Create migration untuk `reels` table
+  - [x] 1.2 Create migration untuk `reels` table
     - Fields: umkm_profile_id, video_url, thumbnail_url, product_name, caption, price, kategori, type, status
     - Foreign key ke umkm_profiles table
     - _Requirements: 2.1, 8.2_
-  - [ ] 1.3 Create migration untuk `engagement_events` table
+  - [x] 1.3 Create migration untuk `engagement_events` table
     - Fields: reel_id, user_identifier, event_type
     - Indexes untuk query optimization
     - _Requirements: 5.1, 8.3_
-  - [ ] 1.4 Create UmkmProfile model dengan relationships dan casts
+  - [x] 1.4 Create UmkmProfile model dengan relationships dan casts
     - _Requirements: 1.1, 8.1_
-  - [ ] 1.5 Create Reel model dengan relationships dan WhatsApp link accessor
+  - [x] 1.5 Create Reel model dengan relationships dan WhatsApp link accessor
     - _Requirements: 2.1, 4.1, 8.2_
-  - [ ] 1.6 Create EngagementEvent model dengan constants dan relationships
+  - [x] 1.6 Create EngagementEvent model dengan constants dan relationships
     - _Requirements: 5.1, 8.3_
 
-- [ ] 2. Checkpoint - Run migrations dan verify models
+- [x] 2. Checkpoint - Run migrations dan verify models
   - Ensure all migrations run successfully
   - Verify model relationships work correctly
 
