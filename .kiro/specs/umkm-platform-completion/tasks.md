@@ -30,25 +30,25 @@ Plan implementasi untuk menyelesaikan backend API dan integrasi frontend PKM Hyp
   - Ensure all migrations run successfully
   - Verify model relationships work correctly
 
-- [ ] 3. UMKM Profile API
-  - [ ] 3.1 Create StoreProfileRequest dengan validation rules
+- [x] 3. UMKM Profile API
+  - [x] 3.1 Create StoreProfileRequest dengan validation rules
     - Validate nomor_wa format (08xx atau 628xx)
     - Validate latitude (-90 to 90) dan longitude (-180 to 180)
     - _Requirements: 1.5, 1.6_
-  - [ ] 3.2 Create UpdateProfileRequest dengan validation rules
+  - [x] 3.2 Create UpdateProfileRequest dengan validation rules
     - _Requirements: 1.2_
-  - [ ] 3.3 Implement UmkmController@store untuk create profile
+  - [x] 3.3 Implement UmkmController@store untuk create profile
     - _Requirements: 1.1_
-  - [ ] 3.4 Implement UmkmController@update untuk update profile
+  - [x] 3.4 Implement UmkmController@update untuk update profile
     - _Requirements: 1.2_
-  - [ ] 3.5 Implement UmkmController@show untuk get own profile
+  - [x] 3.5 Implement UmkmController@show untuk get own profile
     - _Requirements: 1.3_
-  - [ ] 3.6 Implement UmkmController@showPublic untuk get public profile
+  - [x] 3.6 Implement UmkmController@showPublic untuk get public profile
     - _Requirements: 1.4_
-  - [ ] 3.7 Write property test untuk Profile CRUD Consistency
+  - [x] 3.7 Write property test untuk Profile CRUD Consistency
     - **Property 1: Profile CRUD Consistency**
     - **Validates: Requirements 1.1, 1.3, 1.4**
-  - [ ] 3.8 Write property test untuk Profile Validation
+  - [x] 3.8 Write property test untuk Profile Validation
     - **Property 2: Profile Validation Rejects Invalid Data**
     - **Validates: Requirements 1.5, 1.6**
 

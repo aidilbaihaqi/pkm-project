@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Umkm\UmkmController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,9 +14,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Public routes
-Route::middleware('guest')->group(function () {
-    // Public endpoints akan ditambahkan di sini (feed reels, dll)
-});
+Route::get('/umkm/{id}', [UmkmController::class, 'showPublic']);
 
 // Authenticated routes (Seller & Admin only - user biasa tidak perlu login)
 Route::middleware('auth:sanctum')->group(function () {
@@ -25,7 +24,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Seller routes (seller & admin bisa akses)
     Route::middleware('role:seller,admin')->prefix('seller')->group(function () {
-        // UMKM profile & reels management
+        // UMKM profile management
+        Route::post('/profile', [UmkmController::class, 'store']);
+        Route::put('/profile', [UmkmController::class, 'update']);
+        Route::get('/profile', [UmkmController::class, 'show']);
     });
 
     // Admin only routes
