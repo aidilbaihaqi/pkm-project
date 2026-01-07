@@ -52,7 +52,7 @@ Plan implementasi untuk menyelesaikan backend API dan integrasi frontend PKM Hyp
     - **Property 2: Profile Validation Rejects Invalid Data**
     - **Validates: Requirements 1.5, 1.6**
 
-- [ ] 4. Checkpoint - Test UMKM Profile API
+- [x] 4. Checkpoint - Test UMKM Profile API
   - Ensure all profile endpoints work correctly
   - Verify validation rules
 
