@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Reels\ReelsController;
 use App\Http\Controllers\Umkm\UmkmController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +29,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/profile', [UmkmController::class, 'store']);
         Route::put('/profile', [UmkmController::class, 'update']);
         Route::get('/profile', [UmkmController::class, 'show']);
+
+        // Reels management
+        Route::get('/reels', [ReelsController::class, 'sellerReels']);
+        Route::post('/reels', [ReelsController::class, 'store']);
+        Route::put('/reels/{reel}', [ReelsController::class, 'update']);
+        Route::delete('/reels/{reel}', [ReelsController::class, 'destroy']);
     });
 
     // Admin only routes

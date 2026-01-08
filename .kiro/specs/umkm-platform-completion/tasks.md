@@ -56,23 +56,23 @@ Plan implementasi untuk menyelesaikan backend API dan integrasi frontend PKM Hyp
   - Ensure all profile endpoints work correctly
   - Verify validation rules
 
-- [ ] 5. Reels Content API
-  - [ ] 5.1 Create StoreReelRequest dengan YouTube URL validation
+- [x] 5. Reels Content API
+  - [x] 5.1 Create StoreReelRequest dengan YouTube URL validation
     - _Requirements: 2.5_
-  - [ ] 5.2 Create UpdateReelRequest dengan validation rules
+  - [x] 5.2 Create UpdateReelRequest dengan validation rules
     - _Requirements: 2.2_
-  - [ ] 5.3 Implement ReelsController@store untuk create reel
+  - [x] 5.3 Implement ReelsController@store untuk create reel
     - _Requirements: 2.1_
-  - [ ] 5.4 Implement ReelsController@update untuk update reel
+  - [x] 5.4 Implement ReelsController@update untuk update reel
     - _Requirements: 2.2_
-  - [ ] 5.5 Implement ReelsController@destroy untuk delete reel
+  - [x] 5.5 Implement ReelsController@destroy untuk delete reel
     - _Requirements: 2.3_
-  - [ ] 5.6 Implement ReelsController@sellerReels untuk list own reels
+  - [x] 5.6 Implement ReelsController@sellerReels untuk list own reels
     - _Requirements: 2.4_
-  - [ ] 5.7 Write property test untuk Reel CRUD Consistency
+  - [x] 5.7 Write property test untuk Reel CRUD Consistency
     - **Property 3: Reel CRUD Consistency**
     - **Validates: Requirements 2.1, 2.2, 2.3, 2.4**
-  - [ ] 5.8 Write property test untuk YouTube URL Validation
+  - [x] 5.8 Write property test untuk YouTube URL Validation
     - **Property 4: YouTube URL Validation**
     - **Validates: Requirements 2.5**
 
