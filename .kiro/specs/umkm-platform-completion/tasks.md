@@ -159,24 +159,24 @@ Plan implementasi untuk menyelesaikan backend API dan integrasi frontend PKM Hyp
     - Group by middleware (auth, role)
     - _Requirements: All_
 
-- [ ] 15. Frontend Integration
-  - [ ] 15.1 Update VideoFeed component untuk fetch dari API
+- [x] 15. Frontend Integration
+  - [x] 15.1 Update VideoFeed component untuk fetch dari API
     - Replace mock data dengan API call
     - _Requirements: 3.1_
-  - [ ] 15.2 Update Explore page untuk fetch dari API
+  - [x] 15.2 Update Explore page untuk fetch dari API
     - _Requirements: 3.1_
-  - [ ] 15.3 Update Upload page untuk submit ke API
+  - [x] 15.3 Update Upload page untuk submit ke API
     - _Requirements: 2.1_
-  - [ ] 15.4 Update Content page untuk fetch dan manage reels dari API
+  - [x] 15.4 Update Content page untuk fetch dan manage reels dari API
     - _Requirements: 2.4_
-  - [ ] 15.5 Update Seller Dashboard untuk fetch statistics dari API
+  - [x] 15.5 Update Seller Dashboard untuk fetch statistics dari API
     - _Requirements: 5.6_
-  - [ ] 15.6 Update UMKM Show page untuk fetch dari API
+  - [x] 15.6 Update UMKM Show page untuk fetch dari API
     - _Requirements: 1.4_
-  - [ ] 15.7 Update Admin Dashboard untuk fetch dari API
+  - [x] 15.7 Update Admin Dashboard untuk fetch dari API
     - _Requirements: 6.1, 6.4_
 
-- [ ] 16. Final Checkpoint - End-to-end testing
+- [x] 16. Final Checkpoint - End-to-end testing
   - Ensure all features work together
   - Test complete user flows
 

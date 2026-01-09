@@ -1,11 +1,12 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { AppLayout } from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect, useRef } from 'react';
-import { Youtube, Tag, DollarSign, Package, Upload as UploadIcon, Play, X, Image, Plus, Video, Eye, Save, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react';
+import { Youtube, Tag, DollarSign, Package, Upload as UploadIcon, Play, X, Image, Plus, Video, Eye, Save, ArrowLeft, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import ReelsController from '@/actions/App/Http/Controllers/Reels/ReelsController';
 
 const categories = [
     { id: 'kuliner', name: 'Kuliner', emoji: '🍜' },
@@ -43,34 +44,27 @@ export default function Upload() {
     const thumbnailInputRef = useRef<HTMLInputElement>(null);
     const [showPreview, setShowPreview] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadComplete, setUploadComplete] = useState(false);
     const [customThumbnail, setCustomThumbnail] = useState<File | null>(null);
     const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+    const [apiError, setApiError] = useState<string | null>(null);
 
-    const { data, setData, post, processing, errors } = useForm({
-        youtube_url: '',
-        product_name: '',
-        caption: '',
-        price: '',
-        category: '',
-        images: [] as File[],
-    });
+    // Form data
+    const [productName, setProductName] = useState('');
+    const [caption, setCaption] = useState('');
+    const [price, setPrice] = useState('');
 
     // Update video preview when URL changes
     useEffect(() => {
         const id = getYouTubeVideoId(youtubeUrl);
         setVideoId(id);
-        setData('youtube_url', youtubeUrl);
     }, [youtubeUrl]);
 
     // Update image previews when images change
     useEffect(() => {
         const previews = images.map(file => URL.createObjectURL(file));
         setImagePreviews(previews);
-        setData('images', images);
 
-        // Cleanup URLs when component unmounts
         return () => {
             previews.forEach(url => URL.revokeObjectURL(url));
         };
@@ -78,42 +72,71 @@ export default function Upload() {
 
     const handleCategorySelect = (categoryId: string) => {
         setSelectedCategory(categoryId);
-        setData('category', categoryId);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    // Submit to API
+    const handleSubmit = async (e: React.FormEvent, status: 'published' | 'draft' = 'published') => {
         e.preventDefault();
-        simulateUpload('publish');
-    };
-
-    const handleSaveAsDraft = () => {
-        simulateUpload('draft');
-    };
-
-    // Simulated upload with progress
-    const simulateUpload = (mode: 'publish' | 'draft') => {
         setIsUploading(true);
-        setUploadProgress(0);
-        setUploadComplete(false);
+        setApiError(null);
 
-        const interval = setInterval(() => {
-            setUploadProgress(prev => {
-                if (prev >= 100) {
-                    clearInterval(interval);
-                    setIsUploading(false);
-                    setUploadComplete(true);
-                    setTimeout(() => {
-                        setUploadComplete(false);
-                        setUploadProgress(0);
-                        alert(mode === 'publish'
-                            ? `${contentType === 'video' ? 'Video' : 'Foto'} berhasil dipublish!`
-                            : 'Konten disimpan sebagai draft!');
-                    }, 1500);
-                    return 100;
-                }
-                return prev + Math.random() * 15;
+        try {
+            const formData = {
+                video_url: contentType === 'video' ? youtubeUrl : null,
+                thumbnail_url: thumbnailPreview || (videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : imagePreviews[0] || null),
+                product_name: productName,
+                caption: caption,
+                price: price ? parseFloat(price.replace(/\D/g, '')) : null,
+                kategori: selectedCategory,
+                type: contentType === 'video' ? 'video' : 'image',
+                status: status,
+            };
+
+            const response = await fetch(ReelsController.store.url(), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-XSRF-TOKEN': getCsrfToken(),
+                },
+                credentials: 'include',
+                body: JSON.stringify(formData),
             });
-        }, 200);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Gagal mengupload konten');
+            }
+
+            setUploadComplete(true);
+            setTimeout(() => {
+                setUploadComplete(false);
+                router.visit('/content');
+            }, 1500);
+        } catch (err: any) {
+            console.error('Upload error:', err);
+            setApiError(err.message || 'Terjadi kesalahan saat mengupload');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    // Get CSRF token from cookie
+    const getCsrfToken = (): string => {
+        const name = 'XSRF-TOKEN=';
+        const decodedCookie = decodeURIComponent(document.cookie);
+        const cookies = decodedCookie.split(';');
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.indexOf(name) === 0) {
+                return cookie.substring(name.length);
+            }
+        }
+        return '';
+    };
+
+    const handleSaveAsDraft = (e: React.FormEvent) => {
+        handleSubmit(e, 'draft');
     };
 
     const handlePreview = () => {
@@ -127,14 +150,13 @@ export default function Upload() {
     const clearVideo = () => {
         setYoutubeUrl('');
         setVideoId(null);
-        setData('youtube_url', '');
     };
 
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (files) {
             const newImages = Array.from(files);
-            setImages(prev => [...prev, ...newImages].slice(0, 10)); // Max 10 images
+            setImages(prev => [...prev, ...newImages].slice(0, 10));
         }
     };
 
@@ -179,6 +201,16 @@ export default function Upload() {
                     </p>
                 </div>
 
+                {/* API Error Alert */}
+                {apiError && (
+                    <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-sm text-red-700 dark:text-red-300">{apiError}</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Content Type Toggle */}
                 <div className="flex gap-2 mb-6 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
                     <button
@@ -205,7 +237,7 @@ export default function Upload() {
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={(e) => handleSubmit(e, 'published')} className="space-y-6">
                     {/* Image Upload Section */}
                     {contentType === 'images' && (
                         <div>
@@ -213,17 +245,10 @@ export default function Upload() {
                                 <Image className="h-4 w-4 text-blue-500" />
                                 Foto Produk (Maks. 10)
                             </Label>
-
-                            {/* Image Grid */}
                             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                                {/* Existing Images */}
                                 {imagePreviews.map((preview, index) => (
                                     <div key={index} className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                        <img
-                                            src={preview}
-                                            alt={`Preview ${index + 1}`}
-                                            className="w-full h-full object-cover"
-                                        />
+                                        <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
                                         <button
                                             type="button"
                                             onClick={() => removeImage(index)}
@@ -238,8 +263,6 @@ export default function Upload() {
                                         )}
                                     </div>
                                 ))}
-
-                                {/* Add Image Button */}
                                 {images.length < 10 && (
                                     <button
                                         type="button"
@@ -251,16 +274,7 @@ export default function Upload() {
                                     </button>
                                 )}
                             </div>
-
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                onChange={handleImageSelect}
-                                className="hidden"
-                            />
-
+                            <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                                 Foto pertama akan jadi cover. Format: JPG, PNG, WebP
                             </p>
@@ -288,7 +302,6 @@ export default function Upload() {
                                 </p>
                             </div>
 
-                            {/* Video Preview */}
                             {videoId && (
                                 <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
                                     <iframe
@@ -308,7 +321,6 @@ export default function Upload() {
                                 </div>
                             )}
 
-                            {/* No video placeholder */}
                             {!videoId && (
                                 <div className="rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 aspect-video flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/50">
                                     <Play className="h-12 w-12 mb-2" />
@@ -328,8 +340,8 @@ export default function Upload() {
                             id="product_name"
                             type="text"
                             placeholder="Contoh: Gudeg Spesial Bu Tini"
-                            value={data.product_name}
-                            onChange={(e) => setData('product_name', e.target.value)}
+                            value={productName}
+                            onChange={(e) => setProductName(e.target.value)}
                             className="dark:bg-gray-800 dark:border-gray-700"
                             required
                         />
@@ -344,8 +356,8 @@ export default function Upload() {
                         <Textarea
                             id="caption"
                             placeholder="Tulis deskripsi menarik tentang produkmu... #umkm #lokal"
-                            value={data.caption}
-                            onChange={(e) => setData('caption', e.target.value)}
+                            value={caption}
+                            onChange={(e) => setCaption(e.target.value)}
                             className="dark:bg-gray-800 dark:border-gray-700 min-h-[100px]"
                             required
                         />
@@ -365,8 +377,8 @@ export default function Upload() {
                                 id="price"
                                 type="text"
                                 placeholder="25.000"
-                                value={data.price}
-                                onChange={(e) => setData('price', e.target.value)}
+                                value={price}
+                                onChange={(e) => setPrice(e.target.value)}
                                 className="pl-10 dark:bg-gray-800 dark:border-gray-700"
                             />
                         </div>
@@ -374,9 +386,7 @@ export default function Upload() {
 
                     {/* Category */}
                     <div>
-                        <Label className="flex items-center gap-2 mb-3">
-                            Kategori
-                        </Label>
+                        <Label className="flex items-center gap-2 mb-3">Kategori</Label>
                         <div className="flex flex-wrap gap-2">
                             {categories.map((cat) => (
                                 <button
@@ -402,11 +412,7 @@ export default function Upload() {
                         </Label>
                         {thumbnailPreview ? (
                             <div className="relative w-40 h-24 rounded-lg overflow-hidden">
-                                <img
-                                    src={thumbnailPreview}
-                                    alt="Thumbnail"
-                                    className="w-full h-full object-cover"
-                                />
+                                <img src={thumbnailPreview} alt="Thumbnail" className="w-full h-full object-cover" />
                                 <button
                                     type="button"
                                     onClick={clearThumbnail}
@@ -425,13 +431,7 @@ export default function Upload() {
                                 <span className="text-xs">Upload</span>
                             </button>
                         )}
-                        <input
-                            ref={thumbnailInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleThumbnailSelect}
-                            className="hidden"
-                        />
+                        <input ref={thumbnailInputRef} type="file" accept="image/*" onChange={handleThumbnailSelect} className="hidden" />
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                             Jika tidak diupload, thumbnail akan diambil dari video/foto pertama
                         </p>
@@ -461,14 +461,8 @@ export default function Upload() {
                                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                                             Mengupload...
                                         </h3>
-                                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-                                            <div
-                                                className="bg-umkm-orange h-full rounded-full transition-all duration-200"
-                                                style={{ width: `${Math.min(uploadProgress, 100)}%` }}
-                                            />
-                                        </div>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                                            {Math.round(Math.min(uploadProgress, 100))}%
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            Mohon tunggu sebentar
                                         </p>
                                     </>
                                 )}
@@ -478,7 +472,6 @@ export default function Upload() {
 
                     {/* Action Buttons */}
                     <div className="space-y-3 pb-4">
-                        {/* Preview Button */}
                         <Button
                             type="button"
                             variant="outline"
@@ -490,28 +483,25 @@ export default function Upload() {
                             Preview Konten
                         </Button>
 
-                        {/* Main Buttons Row */}
                         <div className="flex gap-3">
-                            {/* Save as Draft */}
                             <Button
                                 type="button"
                                 variant="outline"
                                 onClick={handleSaveAsDraft}
-                                disabled={!hasContent || processing}
+                                disabled={!hasContent || isUploading}
                                 className="flex-1 h-12 font-medium rounded-xl text-base border-gray-300 dark:border-gray-600"
                             >
                                 <Save className="h-4 w-4 mr-2" />
                                 Draft
                             </Button>
 
-                            {/* Publish Button */}
                             <Button
                                 type="submit"
-                                disabled={!hasContent || !data.product_name || processing}
+                                disabled={!hasContent || !productName || !selectedCategory || isUploading}
                                 className="flex-[2] h-12 bg-umkm-orange hover:bg-umkm-orange-dark text-white font-semibold rounded-xl text-base"
                             >
                                 <UploadIcon className="h-5 w-5 mr-2" />
-                                {processing ? 'Mengupload...' : 'Publish'}
+                                {isUploading ? 'Mengupload...' : 'Publish'}
                             </Button>
                         </div>
                     </div>
@@ -529,7 +519,6 @@ export default function Upload() {
                         </button>
 
                         <div className="w-full max-w-md mx-auto">
-                            {/* Preview Content */}
                             <div className="relative aspect-[9/16] bg-gray-900 rounded-2xl overflow-hidden">
                                 {contentType === 'video' && videoId && (
                                     <iframe
@@ -541,24 +530,19 @@ export default function Upload() {
                                     />
                                 )}
                                 {contentType === 'images' && imagePreviews[0] && (
-                                    <img
-                                        src={imagePreviews[0]}
-                                        alt="Preview"
-                                        className="w-full h-full object-cover"
-                                    />
+                                    <img src={imagePreviews[0]} alt="Preview" className="w-full h-full object-cover" />
                                 )}
 
-                                {/* Overlay Info */}
                                 <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
                                     <p className="text-white font-semibold text-lg">
-                                        {data.product_name || 'Nama Produk'}
+                                        {productName || 'Nama Produk'}
                                     </p>
                                     <p className="text-white/80 text-sm line-clamp-2 mt-1">
-                                        {data.caption || 'Deskripsi produk akan muncul di sini...'}
+                                        {caption || 'Deskripsi produk akan muncul di sini...'}
                                     </p>
-                                    {data.price && (
+                                    {price && (
                                         <p className="text-umkm-orange font-bold mt-2">
-                                            Rp {data.price}
+                                            Rp {price}
                                         </p>
                                     )}
                                     {selectedCategory && (
@@ -569,7 +553,6 @@ export default function Upload() {
                                 </div>
                             </div>
 
-                            {/* Preview Actions */}
                             <div className="flex gap-3 mt-4">
                                 <Button
                                     type="button"
@@ -581,9 +564,9 @@ export default function Upload() {
                                 </Button>
                                 <Button
                                     type="button"
-                                    onClick={() => {
+                                    onClick={(e) => {
                                         setShowPreview(false);
-                                        handleSubmit({ preventDefault: () => { } } as React.FormEvent);
+                                        handleSubmit(e, 'published');
                                     }}
                                     className="flex-1 h-12 bg-umkm-orange hover:bg-umkm-orange-dark text-white"
                                 >

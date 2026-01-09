@@ -2,8 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -13,15 +11,23 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Buat admin user (untuk development)
-        // Catatan: Di production, admin dibuat manual atau via WorkOS
-        // User::create([
-        //     'name' => 'Admin',
-        //     'email' => 'admin@example.com',
-        //     'role' => User::ROLE_ADMIN,
-        //     'workos_id' => 'admin_placeholder',
-        //     'avatar' => '',
-        //     'email_verified_at' => now(),
-        // ]);
+        $this->call([
+            UserSeeder::class,
+            UmkmProfileSeeder::class,
+            ReelSeeder::class,
+            EngagementEventSeeder::class,
+        ]);
+
+        $this->command->info('✅ Database seeding completed!');
+        $this->command->info('');
+        $this->command->info('📊 Summary:');
+        $this->command->info('   - 1 Admin user (admin@umkmku.com)');
+        $this->command->info('   - 10 Seller users with UMKM profiles');
+        $this->command->info('   - 40+ Reels with YouTube videos');
+        $this->command->info('   - Engagement events (views, likes, shares, WA clicks)');
+        $this->command->info('');
+        $this->command->info('🔐 Login credentials:');
+        $this->command->info('   Admin: admin@umkmku.com (via WorkOS)');
+        $this->command->info('   Sellers: butini@gmail.com, pakjoko@gmail.com, etc. (via WorkOS)');
     }
 }

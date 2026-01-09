@@ -1,44 +1,34 @@
 import { Button } from '@/components/ui/button';
-import { Head, Link } from '@inertiajs/react';
-import { MapPin, MessageCircle, Clock, Share2, Play, Heart, Grid3X3, Lock, ExternalLink, Check, Copy } from 'lucide-react';
-import { useState } from 'react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { MapPin, MessageCircle, Clock, Share2, Play, Heart, Grid3X3, Lock, ExternalLink, Check, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
+import UmkmController from '@/actions/App/Http/Controllers/Umkm/UmkmController';
+import ReelsController from '@/actions/App/Http/Controllers/Reels/ReelsController';
 
-// Mock Data
-const umkm = {
-    id: 1,
-    name: 'Warung Gudeg Bu Tini',
-    username: 'gudeg_butini',
-    description: 'Menyediakan gudeg asli Jogja dengan resep turun temurun sejak 1980. Spesial Gudeg Yu Djum style dengan krecek pedas dan areh gurih.',
-    address: 'Jl. Malioboro No. 123, Yogyakarta',
-    whatsapp: '6281234567890',
-    lat: -7.7956,
-    lng: 110.3695,
-    avatar: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&h=200&fit=crop',
-    isOpen: true,
-    openHours: '08:00 - 21:00',
-    totalVideos: 24,
-    totalLikes: 12500,
-    likedVideosPublic: true,
-};
+interface Umkm {
+    id: number;
+    name: string;
+    description: string;
+    address: string;
+    whatsapp: string;
+    lat: number;
+    lng: number;
+    avatar: string | null;
+    is_open: boolean;
+    open_hours: string;
+    category: string;
+}
 
-// Mock Videos/Photos
-const mockVideos = [
-    { id: 1, thumbnail: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=600&fit=crop', views: 26000, type: 'video' },
-    { id: 2, thumbnail: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=600&fit=crop', views: 4500000, type: 'video' },
-    { id: 3, thumbnail: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400&h=600&fit=crop', views: 7900000, type: 'video' },
-    { id: 4, thumbnail: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=600&fit=crop', views: 775800, type: 'image' },
-    { id: 5, thumbnail: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=400&h=600&fit=crop', views: 37300, type: 'video' },
-    { id: 6, thumbnail: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400&h=600&fit=crop', views: 3000000, type: 'video' },
-];
+interface Reel {
+    id: number;
+    product_name: string;
+    thumbnail_url: string | null;
+    video_url: string;
+    views_count: number;
+}
 
-const mockLikedVideos = [
-    { id: 7, thumbnail: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=600&fit=crop', views: 15000, type: 'video' },
-    { id: 8, thumbnail: 'https://images.unsplash.com/photo-1529042410759-befb1204b468?w=400&h=600&fit=crop', views: 8200, type: 'video' },
-];
-
-// Format view count
 function formatViews(views: number): string {
     if (views >= 1000000) {
         return (views / 1000000).toFixed(1) + 'M';
@@ -49,17 +39,63 @@ function formatViews(views: number): string {
 }
 
 export default function ShowUMKM() {
+    const { props } = usePage<{ id: string }>();
+    const umkmId = props.id;
+
+    const [umkm, setUmkm] = useState<Umkm | null>(null);
+    const [reels, setReels] = useState<Reel[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'video' | 'liked'>('video');
     const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
 
-    const whatsappLink = `https://wa.me/${umkm.whatsapp}?text=Halo ${umkm.name}, saya melihat profil Anda di UMKMku.`;
-    const mapsLink = `https://www.google.com/maps/search/?api=1&query=${umkm.lat},${umkm.lng}`;
-    const profileUrl = typeof window !== 'undefined' ? window.location.href : `https://umkmku.com/umkm/${umkm.id}`;
+    const fetchUmkmData = useCallback(async () => {
+        if (!umkmId) return;
 
-    const currentVideos = activeTab === 'video' ? mockVideos : mockLikedVideos;
+        try {
+            setIsLoading(true);
+            setError(null);
 
-    // Share handler with Web Share API fallback to clipboard
+            // Fetch UMKM profile
+            const umkmResponse = await fetch(UmkmController.showPublic.url(umkmId), {
+                credentials: 'include',
+            });
+
+            if (!umkmResponse.ok) {
+                throw new Error('UMKM tidak ditemukan');
+            }
+
+            const umkmData = await umkmResponse.json();
+            setUmkm(umkmData.data);
+
+            // Fetch reels for this UMKM
+            const reelsResponse = await fetch(ReelsController.index.url({ query: { umkm_id: umkmId } }), {
+                credentials: 'include',
+            });
+
+            if (reelsResponse.ok) {
+                const reelsData = await reelsResponse.json();
+                setReels(reelsData.data || []);
+            }
+        } catch (err) {
+            console.error('Error fetching UMKM data:', err);
+            setError(err instanceof Error ? err.message : 'Gagal memuat data UMKM');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [umkmId]);
+
+    useEffect(() => {
+        fetchUmkmData();
+    }, [fetchUmkmData]);
+
+    const whatsappLink = umkm ? `https://wa.me/${umkm.whatsapp}?text=Halo ${umkm.name}, saya melihat profil Anda di UMKMku.` : '';
+    const mapsLink = umkm ? `https://www.google.com/maps/search/?api=1&query=${umkm.lat},${umkm.lng}` : '';
+    const profileUrl = typeof window !== 'undefined' ? window.location.href : '';
+
     const handleShare = async () => {
+        if (!umkm) return;
+
         const shareData = {
             title: umkm.name,
             text: `Lihat profil ${umkm.name} di UMKMku!`,
@@ -70,13 +106,11 @@ export default function ShowUMKM() {
             if (navigator.share) {
                 await navigator.share(shareData);
             } else {
-                // Fallback: copy to clipboard
                 await navigator.clipboard.writeText(profileUrl);
                 setShareStatus('copied');
                 setTimeout(() => setShareStatus('idle'), 2000);
             }
-        } catch (err) {
-            // User cancelled or error - try clipboard
+        } catch {
             try {
                 await navigator.clipboard.writeText(profileUrl);
                 setShareStatus('copied');
@@ -86,6 +120,40 @@ export default function ShowUMKM() {
             }
         }
     };
+
+    // Loading state
+    if (isLoading) {
+        return (
+            <AppLayout>
+                <Head title="Memuat..." />
+                <div className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="h-8 w-8 text-umkm-orange animate-spin" />
+                        <p className="text-gray-500 dark:text-gray-400">Memuat profil UMKM...</p>
+                    </div>
+                </div>
+            </AppLayout>
+        );
+    }
+
+    // Error state
+    if (error || !umkm) {
+        return (
+            <AppLayout>
+                <Head title="Error" />
+                <div className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4 text-center px-4">
+                        <p className="text-gray-500 dark:text-gray-400">{error || 'UMKM tidak ditemukan'}</p>
+                        <Button onClick={fetchUmkmData} className="bg-umkm-orange hover:bg-umkm-orange-dark">
+                            Coba Lagi
+                        </Button>
+                    </div>
+                </div>
+            </AppLayout>
+        );
+    }
+
+    const totalLikes = reels.reduce((sum, reel) => sum + (reel.views_count || 0), 0);
 
     return (
         <AppLayout>
@@ -100,9 +168,9 @@ export default function ShowUMKM() {
                             {/* Avatar */}
                             <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-teal-500 p-0.5">
                                 <img
-                                    src={umkm.avatar}
+                                    src={umkm.avatar || '/images/default-avatar.png'}
                                     alt={umkm.name}
-                                    className="h-full w-full rounded-full object-cover"
+                                    className="h-full w-full rounded-full object-cover bg-gray-100"
                                 />
                             </div>
 
@@ -112,18 +180,18 @@ export default function ShowUMKM() {
                                     {umkm.name}
                                 </h1>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    @{umkm.username}
+                                    {umkm.category}
                                 </p>
 
                                 {/* Stats Row */}
                                 <div className="flex items-center gap-4 mt-3 text-sm">
                                     <div className="text-center">
-                                        <span className="font-bold text-gray-900 dark:text-white">{umkm.totalVideos}</span>
+                                        <span className="font-bold text-gray-900 dark:text-white">{reels.length}</span>
                                         <span className="text-gray-500 dark:text-gray-400 ml-1">Video</span>
                                     </div>
                                     <div className="text-center">
-                                        <span className="font-bold text-gray-900 dark:text-white">{formatViews(umkm.totalLikes)}</span>
-                                        <span className="text-gray-500 dark:text-gray-400 ml-1">Suka</span>
+                                        <span className="font-bold text-gray-900 dark:text-white">{formatViews(totalLikes)}</span>
+                                        <span className="text-gray-500 dark:text-gray-400 ml-1">Views</span>
                                     </div>
                                 </div>
                             </div>
@@ -150,11 +218,11 @@ export default function ShowUMKM() {
                                 <Clock className="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />
                                 <span className={cn(
                                     "font-medium",
-                                    umkm.isOpen ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                                    umkm.is_open ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                                 )}>
-                                    {umkm.isOpen ? 'Buka' : 'Tutup'}
+                                    {umkm.is_open ? 'Buka' : 'Tutup'}
                                 </span>
-                                <span className="text-gray-500 dark:text-gray-400">• {umkm.openHours}</span>
+                                <span className="text-gray-500 dark:text-gray-400">• {umkm.open_hours}</span>
                             </div>
                         </div>
 
@@ -211,15 +279,14 @@ export default function ShowUMKM() {
                         >
                             <Heart className="h-5 w-5" />
                             <span className="hidden sm:inline">Disukai</span>
-                            {!umkm.likedVideosPublic && <Lock className="h-3 w-3" />}
+                            <Lock className="h-3 w-3" />
                         </button>
                     </div>
                 </div>
 
                 {/* Content Grid */}
                 <div className="max-w-2xl mx-auto">
-                    {activeTab === 'liked' && !umkm.likedVideosPublic ? (
-                        // Private Liked Videos Message
+                    {activeTab === 'liked' ? (
                         <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
                             <Lock className="h-12 w-12 text-gray-400 dark:text-gray-600 mb-4" />
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -229,35 +296,28 @@ export default function ShowUMKM() {
                                 Hanya pemilik yang dapat melihat video yang disukai
                             </p>
                         </div>
-                    ) : (
+                    ) : reels.length > 0 ? (
                         <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
-                            {currentVideos.map((video) => (
+                            {reels.map((reel) => (
                                 <Link
-                                    key={video.id}
-                                    href={`/`}
+                                    key={reel.id}
+                                    href={`/?reel=${reel.id}`}
                                     className="relative aspect-[9/12] bg-gray-100 dark:bg-gray-800 overflow-hidden group"
                                 >
                                     <img
-                                        src={video.thumbnail}
-                                        alt=""
+                                        src={reel.thumbnail_url || '/images/video-placeholder.png'}
+                                        alt={reel.product_name}
                                         className="h-full w-full object-cover transition-transform group-hover:scale-105"
                                     />
-                                    {/* Overlay */}
                                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                                    {/* Play Icon for Videos */}
-                                    {video.type === 'video' && (
-                                        <div className="absolute bottom-2 left-2 flex items-center gap-1 text-white text-xs font-medium drop-shadow-lg">
-                                            <Play className="h-3 w-3 fill-white" />
-                                            <span>{formatViews(video.views)}</span>
-                                        </div>
-                                    )}
+                                    <div className="absolute bottom-2 left-2 flex items-center gap-1 text-white text-xs font-medium drop-shadow-lg">
+                                        <Play className="h-3 w-3 fill-white" />
+                                        <span>{formatViews(reel.views_count || 0)}</span>
+                                    </div>
                                 </Link>
                             ))}
                         </div>
-                    )}
-
-                    {/* Empty State */}
-                    {currentVideos.length === 0 && activeTab === 'video' && (
+                    ) : (
                         <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
                             <Grid3X3 className="h-12 w-12 text-gray-400 dark:text-gray-600 mb-4" />
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
