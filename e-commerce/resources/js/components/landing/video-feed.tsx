@@ -6,6 +6,29 @@ import { ArrowUp, ArrowDown, Heart, Share2, Volume2, VolumeX, Search, Play, Paus
 import ReelsController from '@/actions/App/Http/Controllers/Reels/ReelsController';
 import EngagementController from '@/actions/App/Http/Controllers/Engagement/EngagementController';
 
+// Helper function to extract YouTube video ID from URL
+function getYouTubeVideoId(url: string): string | null {
+    if (!url) return null;
+    
+    // Match various YouTube URL formats
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    
+    return null;
+}
+
+// Check if URL is a YouTube URL
+function isYouTubeUrl(url: string): boolean {
+    return url?.includes('youtube.com') || url?.includes('youtu.be');
+}
+
 // API Reel type matching backend response
 interface ApiReel {
     id: number;
@@ -167,7 +190,7 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
 
     const [likedReels, setLikedReels] = useState<number[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
-    const [isMuted, setIsMuted] = useState(false);
+    const [isMuted, setIsMuted] = useState(true); // Default muted for autoplay to work
     const [expandedReels, setExpandedReels] = useState<number[]>([]);
     const [viewedReels, setViewedReels] = useState<Set<number>>(new Set());
     const [carouselIndexes, setCarouselIndexes] = useState<Record<number, number>>({});
@@ -620,49 +643,70 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
                                         reel.orientation === 'landscape' ? "h-full" : "h-full"
                                     )}>
                                         {reel.type === 'video' && reel.videoUrl ? (
-                                            <div
-                                                className="relative h-full w-full flex items-center justify-center bg-black"
-                                                onClick={() => {
-                                                    handleVideoTap(reel.id);
-                                                    handleShowControls(reel.id);
-                                                }}
-                                                onMouseMove={() => handleShowControls(reel.id)}
-                                            >
-                                                <video
-                                                    ref={(el) => { videoRefs.current[reel.id] = el; }}
-                                                    src={reel.videoUrl}
-                                                    poster={reel.thumbnail}
-                                                    loop
-                                                    muted={isMuted}
-                                                    playsInline
-                                                    className={cn(
-                                                        "h-full w-full object-center",
-                                                        reel.orientation === 'landscape'
-                                                            ? "object-contain bg-black"
-                                                            : "object-cover"
+                                            // Check if it's a YouTube URL
+                                            isYouTubeUrl(reel.videoUrl) ? (
+                                                <div className="relative h-full w-full flex items-center justify-center bg-black overflow-hidden">
+                                                    {/* Scale up iframe to hide YouTube branding */}
+                                                    <div className="absolute inset-0 flex items-center justify-center" style={{ transform: 'scale(1.2)' }}>
+                                                        <iframe
+                                                            src={`https://www.youtube.com/embed/${getYouTubeVideoId(reel.videoUrl)}?autoplay=${index === activeIndex ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&playlist=${getYouTubeVideoId(reel.videoUrl)}&controls=0&modestbranding=1&rel=0&showinfo=0&playsinline=1&iv_load_policy=3&disablekb=1&fs=0`}
+                                                            className="w-full h-full"
+                                                            style={{ border: 'none', pointerEvents: 'none' }}
+                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                        />
+                                                    </div>
+                                                    {showHeartAnimation === reel.id && (
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
+                                                            <Heart className="h-24 w-24 text-red-500 fill-red-500 animate-ping" />
+                                                        </div>
                                                     )}
-                                                    onTimeUpdate={() => handleTimeUpdate(reel.id)}
-                                                    onPlay={() => handleVideoPlay(reel.id)}
-                                                    onPause={() => handleVideoPause(reel.id)}
-                                                />
-                                                <div className={cn(
-                                                    "absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none",
-                                                    showControls[reel.id] || !isPlaying[reel.id] ? "opacity-100" : "opacity-0"
-                                                )}>
-                                                    <div className="p-4 rounded-full bg-black/40 backdrop-blur-sm">
-                                                        {isPlaying[reel.id] ? (
-                                                            <Pause className="h-10 w-10 text-white" />
-                                                        ) : (
-                                                            <Play className="h-10 w-10 text-white fill-white ml-1" />
-                                                        )}
-                                                    </div>
                                                 </div>
-                                                {showHeartAnimation === reel.id && (
-                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
-                                                        <Heart className="h-24 w-24 text-red-500 fill-red-500 animate-ping" />
+                                            ) : (
+                                                // Regular video file
+                                                <div
+                                                    className="relative h-full w-full flex items-center justify-center bg-black"
+                                                    onClick={() => {
+                                                        handleVideoTap(reel.id);
+                                                        handleShowControls(reel.id);
+                                                    }}
+                                                    onMouseMove={() => handleShowControls(reel.id)}
+                                                >
+                                                    <video
+                                                        ref={(el) => { videoRefs.current[reel.id] = el; }}
+                                                        src={reel.videoUrl}
+                                                        autoPlay
+                                                        loop
+                                                        muted={isMuted}
+                                                        playsInline
+                                                        className={cn(
+                                                            "h-full w-full object-center",
+                                                            reel.orientation === 'landscape'
+                                                                ? "object-contain bg-black"
+                                                                : "object-cover"
+                                                        )}
+                                                        onTimeUpdate={() => handleTimeUpdate(reel.id)}
+                                                        onPlay={() => handleVideoPlay(reel.id)}
+                                                        onPause={() => handleVideoPause(reel.id)}
+                                                    />
+                                                    <div className={cn(
+                                                        "absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none",
+                                                        showControls[reel.id] || !isPlaying[reel.id] ? "opacity-100" : "opacity-0"
+                                                    )}>
+                                                        <div className="p-4 rounded-full bg-black/40 backdrop-blur-sm">
+                                                            {isPlaying[reel.id] ? (
+                                                                <Pause className="h-10 w-10 text-white" />
+                                                            ) : (
+                                                                <Play className="h-10 w-10 text-white fill-white ml-1" />
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                )}
-                                            </div>
+                                                    {showHeartAnimation === reel.id && (
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
+                                                            <Heart className="h-24 w-24 text-red-500 fill-red-500 animate-ping" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )
                                         ) : isImageGallery && reel.images ? (
                                             reel.images.map((img, idx) => (
                                                 <img
@@ -777,7 +821,7 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
 
                                     <ActionButton icon={Share2} label="Bagikan" onClick={() => handleShare(reel)} />
 
-                                    <div className="mt-8 flex flex-col gap-2">
+                                    <div className="mt-12 flex flex-col gap-2">
                                         <Button
                                             variant="secondary"
                                             size="icon"
@@ -801,7 +845,7 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
 
                                 {/* Mobile Actions */}
                                 <div className={cn(
-                                    "absolute right-2 bottom-0 flex flex-col items-center gap-3 md:hidden z-20",
+                                    "absolute right-2 bottom-24 flex flex-col items-center gap-4 md:hidden z-20",
                                     reel.orientation === 'landscape' && "translate-y-1/3"
                                 )}>
                                     <Link href={`/umkm/${reel.umkmId}`} className="relative">
