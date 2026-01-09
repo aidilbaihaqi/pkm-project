@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Engagement\EngagementController;
 use App\Http\Controllers\Reels\ReelsController;
@@ -49,5 +50,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Admin only routes
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         // Admin panel endpoints
+        Route::get('/sellers', [AdminController::class, 'sellers']);
+        Route::post('/sellers/{id}/block', [AdminController::class, 'blockSeller']);
+        Route::post('/sellers/{id}/unblock', [AdminController::class, 'unblockSeller']);
+        Route::get('/stats', [AdminController::class, 'stats']);
     });
 });

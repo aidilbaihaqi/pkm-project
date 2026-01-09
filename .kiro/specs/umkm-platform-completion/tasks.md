@@ -133,29 +133,29 @@ Plan implementasi untuk menyelesaikan backend API dan integrasi frontend PKM Hyp
 - [x] 11. Checkpoint - Test Engagement Tracking
   - Ensure events are recorded and throttled correctly
 
-- [ ] 12. Admin Panel API
-  - [ ] 12.1 Implement AdminController@sellers untuk list sellers
+- [x] 12. Admin Panel API
+  - [x] 12.1 Implement AdminController@sellers untuk list sellers
     - _Requirements: 6.1_
-  - [ ] 12.2 Implement AdminController@blockSeller
+  - [x] 12.2 Implement AdminController@blockSeller
     - _Requirements: 6.2_
-  - [ ] 12.3 Implement AdminController@unblockSeller
+  - [x] 12.3 Implement AdminController@unblockSeller
     - _Requirements: 6.3_
-  - [ ] 12.4 Implement AdminController@stats untuk platform statistics
+  - [x] 12.4 Implement AdminController@stats untuk platform statistics
     - _Requirements: 6.4_
-  - [ ] 12.5 Add admin middleware ke admin routes
+  - [x] 12.5 Add admin middleware ke admin routes
     - _Requirements: 6.5_
-  - [ ] 12.6 Write property test untuk Seller Blocking Round-Trip
+  - [x] 12.6 Write property test untuk Seller Blocking Round-Trip
     - **Property 11: Seller Blocking Round-Trip**
     - **Validates: Requirements 6.2, 6.3**
-  - [ ] 12.7 Write property test untuk Admin Authorization
+  - [x] 12.7 Write property test untuk Admin Authorization
     - **Property 12: Admin Authorization**
     - **Validates: Requirements 6.5**
 
-- [ ] 13. Checkpoint - Test Admin Panel API
+- [x] 13. Checkpoint - Test Admin Panel API
   - Ensure admin endpoints work correctly with proper authorization
 
-- [ ] 14. API Routes Registration
-  - [ ] 14.1 Register all API routes di routes/api.php
+- [x] 14. API Routes Registration
+  - [x] 14.1 Register all API routes di routes/api.php
     - Group by middleware (auth, role)
     - _Requirements: All_
 
