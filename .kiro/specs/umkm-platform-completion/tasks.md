@@ -180,7 +180,7 @@ Plan implementasi untuk menyelesaikan backend API dan integrasi frontend PKM Hyp
   - Ensure all features work together
   - Test complete user flows
 
-- [ ] 17. Write property test untuk JSON Serialization Round-Trip
+- [x] 17. Write property test untuk JSON Serialization Round-Trip
   - **Property 13: JSON Serialization Round-Trip**
   - **Validates: Requirements 8.4, 8.5**
 
