@@ -100,37 +100,37 @@ Plan implementasi untuk menyelesaikan backend API dan integrasi frontend PKM Hyp
 - [x] 8. Checkpoint - Test Location-Based Feed
   - Ensure feed returns correct results based on location
 
-- [ ] 9. WhatsApp CTA Integration
-  - [ ] 9.1 Create WhatsAppService untuk generate link dengan message template
+- [x] 9. WhatsApp CTA Integration
+  - [x] 9.1 Create WhatsAppService untuk generate link dengan message template
     - _Requirements: 4.1, 4.2_
-  - [ ] 9.2 Add whatsapp_link accessor ke Reel model
+  - [x] 9.2 Add whatsapp_link accessor ke Reel model
     - _Requirements: 4.1_
-  - [ ] 9.3 Write property test untuk WhatsApp Link Generation
+  - [x] 9.3 Write property test untuk WhatsApp Link Generation
     - **Property 7: WhatsApp Link Generation**
     - **Validates: Requirements 4.1, 4.2**
 
-- [ ] 10. Engagement Tracking API
-  - [ ] 10.1 Create EngagementService dengan throttling logic
+- [x] 10. Engagement Tracking API
+  - [x] 10.1 Create EngagementService dengan throttling logic
     - _Requirements: 5.5_
-  - [ ] 10.2 Create RecordEventRequest dengan validation
+  - [x] 10.2 Create RecordEventRequest dengan validation
     - _Requirements: 5.1_
-  - [ ] 10.3 Implement EngagementController@recordEvent
+  - [x] 10.3 Implement EngagementController@recordEvent
     - Record view, like, share, click_wa events
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 4.3_
-  - [ ] 10.4 Implement EngagementController@sellerStats
+  - [x] 10.4 Implement EngagementController@sellerStats
     - Aggregate counts per reel
     - _Requirements: 5.6_
-  - [ ] 10.5 Write property test untuk Engagement Event Recording
+  - [x] 10.5 Write property test untuk Engagement Event Recording
     - **Property 8: Engagement Event Recording**
     - **Validates: Requirements 5.1, 5.2, 5.3, 5.4**
-  - [ ] 10.6 Write property test untuk Engagement Throttling
+  - [x] 10.6 Write property test untuk Engagement Throttling
     - **Property 9: Engagement Throttling**
     - **Validates: Requirements 5.5**
-  - [ ] 10.7 Write property test untuk Statistics Aggregation Accuracy
+  - [x] 10.7 Write property test untuk Statistics Aggregation Accuracy
     - **Property 10: Statistics Aggregation Accuracy**
     - **Validates: Requirements 5.6**
 
-- [ ] 11. Checkpoint - Test Engagement Tracking
+- [x] 11. Checkpoint - Test Engagement Tracking
   - Ensure events are recorded and throttled correctly
 
 - [ ] 12. Admin Panel API

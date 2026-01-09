@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WhatsAppService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -65,6 +66,7 @@ class Reel extends Model
 
     /**
      * Get the WhatsApp link with pre-filled message template.
+     * Uses WhatsAppService for link generation.
      */
     public function getWhatsappLinkAttribute(): string
     {
@@ -74,15 +76,12 @@ class Reel extends Model
             return '';
         }
 
-        $phone = $profile->nomor_wa;
+        $whatsAppService = app(WhatsAppService::class);
         
-        // Convert 08xx to 628xx format for WhatsApp
-        if (str_starts_with($phone, '0')) {
-            $phone = '62' . substr($phone, 1);
-        }
-
-        $message = urlencode("Halo {$profile->nama_toko}, saya tertarik dengan produk {$this->product_name}");
-        
-        return "https://wa.me/{$phone}?text={$message}";
+        return $whatsAppService->generateLink(
+            $profile->nomor_wa,
+            $this->product_name,
+            $profile->nama_toko
+        );
     }
 }
