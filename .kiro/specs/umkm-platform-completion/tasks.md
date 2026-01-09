@@ -79,25 +79,25 @@ Plan implementasi untuk menyelesaikan backend API dan integrasi frontend PKM Hyp
 - [x] 6. Checkpoint - Test Reels Content API
   - Ensure all reel CRUD endpoints work correctly
 
-- [ ] 7. Location-Based Feed API
-  - [ ] 7.1 Create LocationService untuk distance calculation (Haversine formula)
+- [x] 7. Location-Based Feed API
+  - [x] 7.1 Create LocationService untuk distance calculation (Haversine formula)
     - _Requirements: 3.1_
-  - [ ] 7.2 Create FeedRequest dengan lat, lng, radius validation
+  - [x] 7.2 Create FeedRequest dengan lat, lng, radius validation
     - _Requirements: 3.1_
-  - [ ] 7.3 Implement ReelsController@index untuk location-based feed
+  - [x] 7.3 Implement ReelsController@index untuk location-based feed
     - Filter by radius, sort by distance dan recency
     - Include pagination
     - _Requirements: 3.1, 3.2, 3.4_
-  - [ ] 7.4 Implement ReelsController@show untuk single reel dengan UMKM info
+  - [x] 7.4 Implement ReelsController@show untuk single reel dengan UMKM info
     - _Requirements: 3.3_
-  - [ ] 7.5 Write property test untuk Location-Based Feed Filtering
+  - [x] 7.5 Write property test untuk Location-Based Feed Filtering
     - **Property 5: Location-Based Feed Filtering**
     - **Validates: Requirements 3.1**
-  - [ ] 7.6 Write property test untuk Feed Sorting Consistency
+  - [x] 7.6 Write property test untuk Feed Sorting Consistency
     - **Property 6: Feed Sorting Consistency**
     - **Validates: Requirements 3.2**
 
-- [ ] 8. Checkpoint - Test Location-Based Feed
+- [x] 8. Checkpoint - Test Location-Based Feed
   - Ensure feed returns correct results based on location
 
 - [ ] 9. WhatsApp CTA Integration

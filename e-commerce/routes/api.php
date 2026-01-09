@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::get('/umkm/{id}', [UmkmController::class, 'showPublic']);
+Route::get('/reels', [ReelsController::class, 'index']);
+Route::get('/reels/{id}', [ReelsController::class, 'show']);
 
 // Authenticated routes (Seller & Admin only - user biasa tidak perlu login)
 Route::middleware('auth:sanctum')->group(function () {

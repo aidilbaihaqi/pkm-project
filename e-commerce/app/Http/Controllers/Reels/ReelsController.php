@@ -3,14 +3,130 @@
 namespace App\Http\Controllers\Reels;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Reels\FeedRequest;
 use App\Http\Requests\Reels\StoreReelRequest;
 use App\Http\Requests\Reels\UpdateReelRequest;
 use App\Models\Reel;
+use App\Services\LocationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ReelsController extends Controller
 {
+    public function __construct(
+        private LocationService $locationService
+    ) {}
+
+    /**
+     * Get location-based feed of reels.
+     * Requirements: 3.1, 3.2, 3.4
+     */
+    public function index(FeedRequest $request): JsonResponse
+    {
+        $lat = (float) $request->input('lat');
+        $lng = (float) $request->input('lng');
+        $radius = $request->getRadius();
+        $perPage = $request->getPerPage();
+        $page = $request->getPage();
+
+        $result = $this->locationService->getReelsWithinRadius(
+            $lat,
+            $lng,
+            $radius,
+            $perPage,
+            $page
+        );
+
+        // Transform data to include distance in response
+        $data = $result['data']->map(function ($reel) {
+            return [
+                'id' => $reel->id,
+                'video_url' => $reel->video_url,
+                'thumbnail_url' => $reel->thumbnail_url,
+                'product_name' => $reel->product_name,
+                'caption' => $reel->caption,
+                'price' => $reel->price,
+                'kategori' => $reel->kategori,
+                'type' => $reel->type,
+                'status' => $reel->status,
+                'whatsapp_link' => $reel->whatsapp_link,
+                'distance_km' => round($reel->distance, 2),
+                'created_at' => $reel->created_at,
+                'umkm_profile' => [
+                    'id' => $reel->umkmProfile->id,
+                    'nama_toko' => $reel->umkmProfile->nama_toko,
+                    'kategori' => $reel->umkmProfile->kategori,
+                    'avatar' => $reel->umkmProfile->avatar,
+                    'is_open' => $reel->umkmProfile->is_open,
+                ],
+            ];
+        });
+
+        if ($data->isEmpty()) {
+            return response()->json([
+                'message' => 'Tidak ada konten UMKM dalam radius yang ditentukan',
+                'data' => [],
+                'meta' => $result['meta'],
+            ]);
+        }
+
+        return response()->json([
+            'data' => $data,
+            'meta' => $result['meta'],
+        ]);
+    }
+
+    /**
+     * Get a single reel with UMKM information.
+     * Requirements: 3.3
+     */
+    public function show(int $id): JsonResponse
+    {
+        $reel = Reel::with('umkmProfile')->find($id);
+
+        if (!$reel) {
+            return response()->json([
+                'message' => 'Reel tidak ditemukan',
+            ], 404);
+        }
+
+        // Check if UMKM is blocked
+        if ($reel->umkmProfile && $reel->umkmProfile->is_blocked) {
+            return response()->json([
+                'message' => 'Konten tidak tersedia',
+            ], 404);
+        }
+
+        return response()->json([
+            'data' => [
+                'id' => $reel->id,
+                'video_url' => $reel->video_url,
+                'thumbnail_url' => $reel->thumbnail_url,
+                'product_name' => $reel->product_name,
+                'caption' => $reel->caption,
+                'price' => $reel->price,
+                'kategori' => $reel->kategori,
+                'type' => $reel->type,
+                'status' => $reel->status,
+                'whatsapp_link' => $reel->whatsapp_link,
+                'created_at' => $reel->created_at,
+                'updated_at' => $reel->updated_at,
+                'umkm_profile' => $reel->umkmProfile ? [
+                    'id' => $reel->umkmProfile->id,
+                    'nama_toko' => $reel->umkmProfile->nama_toko,
+                    'nomor_wa' => $reel->umkmProfile->nomor_wa,
+                    'alamat' => $reel->umkmProfile->alamat,
+                    'latitude' => $reel->umkmProfile->latitude,
+                    'longitude' => $reel->umkmProfile->longitude,
+                    'kategori' => $reel->umkmProfile->kategori,
+                    'deskripsi' => $reel->umkmProfile->deskripsi,
+                    'avatar' => $reel->umkmProfile->avatar,
+                    'is_open' => $reel->umkmProfile->is_open,
+                    'open_hours' => $reel->umkmProfile->open_hours,
+                ] : null,
+            ],
+        ]);
+    }
     /**
      * Create a new reel for the authenticated seller.
      * Requirements: 2.1
