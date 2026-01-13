@@ -9,18 +9,18 @@ import EngagementController from '@/actions/App/Http/Controllers/Engagement/Enga
 // Helper function to extract YouTube video ID from URL
 function getYouTubeVideoId(url: string): string | null {
     if (!url) return null;
-    
+
     // Match various YouTube URL formats
     const patterns = [
         /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
         /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
     ];
-    
+
     for (const pattern of patterns) {
         const match = url.match(pattern);
         if (match) return match[1];
     }
-    
+
     return null;
 }
 
@@ -102,6 +102,7 @@ interface VideoFeedProps {
 export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoFeedProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const videoRefs = useRef<Record<number, HTMLVideoElement | null>>({});
+    const youtubeRefs = useRef<Record<number, HTMLIFrameElement | null>>({});
     const loadMoreRef = useRef<HTMLDivElement>(null);
 
     // Reels state for infinite scroll
@@ -162,6 +163,17 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
         fetchReels(1);
     }, [fetchReels]);
 
+    // Handle end of feed message
+    useEffect(() => {
+        if (!hasMore && !isLoading && !isLoadingMore && reels.length > 0) {
+            setShowEndMessage(true);
+            const timer = setTimeout(() => {
+                setShowEndMessage(false);
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [hasMore, isLoading, isLoadingMore, reels.length]);
+
     // Load more reels
     const loadMoreReels = useCallback(() => {
         if (isLoadingMore || !hasMore) return;
@@ -190,7 +202,7 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
 
     const [likedReels, setLikedReels] = useState<number[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
-    const [isMuted, setIsMuted] = useState(true); // Default muted for autoplay to work
+    const [isMuted, setIsMuted] = useState(false); // Default unmuted (sound ON)
     const [expandedReels, setExpandedReels] = useState<number[]>([]);
     const [viewedReels, setViewedReels] = useState<Set<number>>(new Set());
     const [carouselIndexes, setCarouselIndexes] = useState<Record<number, number>>({});
@@ -288,14 +300,29 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
 
     // Play/Pause videos based on active index
     useEffect(() => {
+        // Reset isPaused for all videos when active index changes
+        const activeReelId = reels[activeIndex]?.id;
+        if (activeReelId !== undefined) {
+            // Reset isPaused: active video starts fresh, inactive videos are paused
+            setIsPaused(prev => {
+                const newState: Record<number, boolean> = {};
+                reels.forEach((reel, idx) => {
+                    newState[reel.id] = idx !== activeIndex; // Pause non-active, unpause active
+                });
+                return newState;
+            });
+        }
+
         Object.entries(videoRefs.current).forEach(([id, video]) => {
             if (video) {
                 const reelIndex = reels.findIndex((r: Reel) => r.id === Number(id));
                 if (reelIndex === activeIndex) {
                     video.play().catch(() => { });
+                    setIsPlaying(prev => ({ ...prev, [Number(id)]: true }));
                 } else {
                     video.pause();
                     video.currentTime = 0;
+                    setIsPlaying(prev => ({ ...prev, [Number(id)]: false }));
                 }
             }
         });
@@ -354,14 +381,40 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
 
     const toggleVideoPlay = (reelId: number) => {
         const video = videoRefs.current[reelId];
+        const youtubeIframe = youtubeRefs.current[reelId];
+
         if (video) {
+            // Regular video element
             if (video.paused) {
                 video.play();
                 setIsPlaying(prev => ({ ...prev, [reelId]: true }));
+                setIsPaused(prev => ({ ...prev, [reelId]: false }));
             } else {
                 video.pause();
                 setIsPlaying(prev => ({ ...prev, [reelId]: false }));
+                setIsPaused(prev => ({ ...prev, [reelId]: true }));
             }
+        } else if (youtubeIframe && youtubeIframe.contentWindow) {
+            // YouTube iframe - use postMessage API to pause/play without reload
+            const currentlyPaused = isPaused[reelId];
+            if (currentlyPaused) {
+                // Resume playing
+                youtubeIframe.contentWindow.postMessage(
+                    JSON.stringify({ event: 'command', func: 'playVideo' }),
+                    '*'
+                );
+                setIsPaused(prev => ({ ...prev, [reelId]: false }));
+            } else {
+                // Pause
+                youtubeIframe.contentWindow.postMessage(
+                    JSON.stringify({ event: 'command', func: 'pauseVideo' }),
+                    '*'
+                );
+                setIsPaused(prev => ({ ...prev, [reelId]: true }));
+            }
+        } else {
+            // Fallback - just toggle state
+            setIsPaused(prev => ({ ...prev, [reelId]: !prev[reelId] }));
         }
     };
 
@@ -610,7 +663,7 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
                     <React.Fragment key={reel.id}>
                         <div
                             className={cn(
-                                "relative h-full w-full snap-center snap-always pb-5 md:pb-5",
+                                "relative h-full w-full snap-center snap-always pb-5 md:pb-5 select-none",
                                 reel.orientation === 'landscape'
                                     ? mobileViewMode[reel.id] === 'landscape'
                                         ? "flex flex-col items-center justify-center"
@@ -645,16 +698,32 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
                                         {reel.type === 'video' && reel.videoUrl ? (
                                             // Check if it's a YouTube URL
                                             isYouTubeUrl(reel.videoUrl) ? (
-                                                <div className="relative h-full w-full flex items-center justify-center bg-black overflow-hidden">
+                                                <div
+                                                    className="relative h-full w-full flex items-center justify-center bg-black overflow-hidden cursor-pointer"
+                                                    onClick={() => {
+                                                        handleVideoTap(reel.id);
+                                                        handleShowControls(reel.id);
+                                                    }}
+                                                    onMouseMove={() => handleShowControls(reel.id)}
+                                                >
                                                     {/* Scale up iframe to hide YouTube branding */}
                                                     <div className="absolute inset-0 flex items-center justify-center" style={{ transform: 'scale(1.2)' }}>
                                                         <iframe
-                                                            src={`https://www.youtube.com/embed/${getYouTubeVideoId(reel.videoUrl)}?autoplay=${index === activeIndex ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&playlist=${getYouTubeVideoId(reel.videoUrl)}&controls=0&modestbranding=1&rel=0&showinfo=0&playsinline=1&iv_load_policy=3&disablekb=1&fs=0`}
+                                                            ref={(el) => { youtubeRefs.current[reel.id] = el; }}
+                                                            src={`https://www.youtube.com/embed/${getYouTubeVideoId(reel.videoUrl)}?autoplay=${index === activeIndex ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&playlist=${getYouTubeVideoId(reel.videoUrl)}&controls=0&modestbranding=1&rel=0&showinfo=0&playsinline=1&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1`}
                                                             className="w-full h-full"
                                                             style={{ border: 'none', pointerEvents: 'none' }}
                                                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                                         />
                                                     </div>
+                                                    {/* Play/Pause Indicator - only show when explicitly paused */}
+                                                    {isPaused[reel.id] && (
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                                                            <div className="p-4 rounded-full bg-black/40 backdrop-blur-sm">
+                                                                <Play className="h-10 w-10 text-white fill-white ml-1" />
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                     {showHeartAnimation === reel.id && (
                                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
                                                             <Heart className="h-24 w-24 text-red-500 fill-red-500 animate-ping" />
@@ -705,6 +774,33 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
                                                             <Heart className="h-24 w-24 text-red-500 fill-red-500 animate-ping" />
                                                         </div>
                                                     )}
+                                                    {/* Progress Bar */}
+                                                    <div className="absolute bottom-0 left-0 right-0 z-30 px-3 pb-3 pt-8 bg-gradient-to-t from-black/60 to-transparent">
+                                                        <div className="flex items-center gap-2 text-white text-xs">
+                                                            <span className="tabular-nums min-w-[32px]">
+                                                                {formatTime(videoCurrentTime[reel.id] || 0)}
+                                                            </span>
+                                                            <div
+                                                                className="relative flex-1 h-1 bg-white/30 rounded-full cursor-pointer group"
+                                                                onMouseDown={(e) => handleProgressMouseDown(e, reel.id)}
+                                                                onTouchStart={(e) => handleProgressTouchStart(e, reel.id)}
+                                                                onTouchMove={(e) => handleProgressTouchMove(e, reel.id)}
+                                                                onTouchEnd={(e) => handleProgressTouchEnd(e, reel.id)}
+                                                            >
+                                                                <div
+                                                                    className="absolute top-0 left-0 h-full bg-white rounded-full transition-all"
+                                                                    style={{ width: `${videoProgress[reel.id] || 0}%` }}
+                                                                />
+                                                                <div
+                                                                    className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    style={{ left: `calc(${videoProgress[reel.id] || 0}% - 6px)` }}
+                                                                />
+                                                            </div>
+                                                            <span className="tabular-nums min-w-[32px]">
+                                                                {formatTime(videoDuration[reel.id] || 0)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             )
                                         ) : isImageGallery && reel.images ? (

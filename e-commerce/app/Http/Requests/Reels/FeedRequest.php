@@ -23,8 +23,9 @@ class FeedRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'lat' => ['required', 'numeric', 'between:-90,90'],
-            'lng' => ['required', 'numeric', 'between:-180,180'],
+            'umkm_id' => ['nullable', 'integer', 'exists:umkm_profiles,id'],
+            'lat' => ['required_without:umkm_id', 'nullable', 'numeric', 'between:-90,90'],
+            'lng' => ['required_without:umkm_id', 'nullable', 'numeric', 'between:-180,180'],
             'radius' => ['nullable', 'numeric', 'min:0.1', 'max:100'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
             'page' => ['nullable', 'integer', 'min:1'],

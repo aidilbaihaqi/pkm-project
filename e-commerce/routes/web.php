@@ -63,6 +63,15 @@ Route::middleware([
     Route::get('content', function () {
         return Inertia::render('seller/content');
     })->name('content');
+
+    // Seller Content Management
+    Route::get('/seller/content', function () {
+        return Inertia::render('seller/content');
+    })->name('seller.content');
+
+    Route::get('/seller/content/{id}/edit', function ($id) {
+        return Inertia::render('seller/content/edit', ['id' => $id]);
+    })->name('seller.content.edit');
 });
 
 /*

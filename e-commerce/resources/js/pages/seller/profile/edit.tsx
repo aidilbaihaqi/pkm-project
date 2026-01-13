@@ -4,41 +4,230 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LocationPicker } from '@/components/ui/location-picker';
 import { AppLayout } from '@/layouts/app-layout';
-import { Head, useForm } from '@inertiajs/react';
-import { Save } from 'lucide-react';
-import { type FormEvent } from 'react';
+import { Head, router } from '@inertiajs/react';
+import { Save, Loader2, AlertCircle, CheckCircle, Store } from 'lucide-react';
+import { useState, useEffect, useCallback, type FormEvent } from 'react';
+import UmkmController from '@/actions/App/Http/Controllers/Umkm/UmkmController';
 
-interface ProfileForm {
-    name: string;
-    description: string;
-    whatsapp: string;
-    address: string;
-    lat: number;
-    lng: number;
-    avatar: File | null;
-    cover: File | null;
+interface ProfileData {
+    id?: number;
+    nama_toko: string;
+    deskripsi: string;
+    nomor_wa: string;
+    alamat: string;
+    latitude: number;
+    longitude: number;
+    kategori: string;
+    avatar: string | null;
+    is_open: boolean;
+    open_hours: string;
 }
 
+const categories = [
+    { id: 'kuliner', name: 'Kuliner', emoji: '🍜' },
+    { id: 'fashion', name: 'Fashion', emoji: '👗' },
+    { id: 'kerajinan', name: 'Kerajinan', emoji: '🎨' },
+    { id: 'kecantikan', name: 'Kecantikan', emoji: '💄' },
+    { id: 'elektronik', name: 'Elektronik', emoji: '📱' },
+    { id: 'pertanian', name: 'Pertanian', emoji: '🌾' },
+];
+
+// Get CSRF token from cookie
+const getCsrfToken = (): string => {
+    const name = 'XSRF-TOKEN=';
+    const decodedCookie = decodeURIComponent(document.cookie);
+    const cookies = decodedCookie.split(';');
+    for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.indexOf(name) === 0) {
+            return cookie.substring(name.length);
+        }
+    }
+    return '';
+};
+
 export default function EditProfile() {
-    const { data, setData, post, processing, errors } = useForm<ProfileForm>({
-        name: 'Warung Gudeg Bu Tini',
-        description: 'Menyediakan gudeg asli Jogja dengan resep turun temurun.',
-        whatsapp: '81234567890',
-        address: 'Jl. Malioboro No. 123, Yogyakarta',
-        lat: -7.7956,
-        lng: 110.3695,
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isNewProfile, setIsNewProfile] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    const [formData, setFormData] = useState<ProfileData>({
+        nama_toko: '',
+        deskripsi: '',
+        nomor_wa: '',
+        alamat: '',
+        latitude: -7.7956,
+        longitude: 110.3695,
+        kategori: 'kuliner',
         avatar: null,
-        cover: null,
+        is_open: true,
+        open_hours: '08:00 - 17:00',
     });
 
-    const submit = (e: FormEvent) => {
-        e.preventDefault();
-        // Mock submission - in real app this goes to backend
-        console.log('Submitting profile:', data);
-        // post(route('seller.profile.update'));
-        console.log('Update profile endpoint would be called here');
-        alert('Profile saved (Mock Mode)');
+    const [errors, setErrors] = useState<Record<string, string>>({});
+
+    // Fetch existing profile on mount
+    const fetchProfile = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            const response = await fetch(UmkmController.show.url(), {
+                credentials: 'include',
+            });
+
+            if (response.status === 404) {
+                // Profile doesn't exist yet - user needs to create one
+                setIsNewProfile(true);
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error('Gagal memuat profil');
+            }
+
+            const data = await response.json();
+            if (data.data) {
+                setFormData({
+                    id: data.data.id,
+                    nama_toko: data.data.nama_toko || '',
+                    deskripsi: data.data.deskripsi || '',
+                    nomor_wa: data.data.nomor_wa?.replace(/^62/, '') || '',
+                    alamat: data.data.alamat || '',
+                    latitude: parseFloat(data.data.latitude) || -7.7956,
+                    longitude: parseFloat(data.data.longitude) || 110.3695,
+                    kategori: data.data.kategori || 'kuliner',
+                    avatar: data.data.avatar,
+                    is_open: data.data.is_open ?? true,
+                    open_hours: data.data.open_hours || '08:00 - 17:00',
+                });
+                setIsNewProfile(false);
+            }
+        } catch (err) {
+            console.error('Error fetching profile:', err);
+            setError(err instanceof Error ? err.message : 'Gagal memuat profil');
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchProfile();
+    }, [fetchProfile]);
+
+    const showToast = (message: string, type: 'success' | 'error') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 5000);
     };
+
+    const handleChange = (field: keyof ProfileData, value: string | number | boolean) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        // Clear error for this field
+        if (errors[field]) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[field];
+                return newErrors;
+            });
+        }
+    };
+
+    const submit = async (e: FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        setErrors({});
+
+        try {
+            // Format phone number for API
+            const phoneNumber = formData.nomor_wa.startsWith('0')
+                ? '62' + formData.nomor_wa.substring(1)
+                : formData.nomor_wa.startsWith('62')
+                    ? formData.nomor_wa
+                    : '62' + formData.nomor_wa;
+
+            const payload = {
+                nama_toko: formData.nama_toko,
+                deskripsi: formData.deskripsi,
+                nomor_wa: phoneNumber,
+                alamat: formData.alamat,
+                latitude: formData.latitude,
+                longitude: formData.longitude,
+                kategori: formData.kategori,
+                is_open: formData.is_open,
+                open_hours: formData.open_hours,
+            };
+
+            const url = isNewProfile ? UmkmController.store.url() : UmkmController.update.url();
+            const method = isNewProfile ? 'POST' : 'PUT';
+
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-XSRF-TOKEN': getCsrfToken(),
+                },
+                credentials: 'include',
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                if (data.errors) {
+                    setErrors(data.errors);
+                }
+                throw new Error(data.message || 'Gagal menyimpan profil');
+            }
+
+            showToast(isNewProfile ? 'Profil berhasil dibuat!' : 'Profil berhasil disimpan!', 'success');
+
+            if (isNewProfile) {
+                setIsNewProfile(false);
+                setFormData(prev => ({ ...prev, id: data.data?.id }));
+            }
+        } catch (err) {
+            console.error('Error saving profile:', err);
+            showToast(err instanceof Error ? err.message : 'Gagal menyimpan profil', 'error');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // Loading state
+    if (isLoading) {
+        return (
+            <AppLayout>
+                <Head title="Edit Profil Toko" />
+                <div className="flex h-full flex-1 items-center justify-center p-4">
+                    <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="h-8 w-8 text-teal-600 animate-spin" />
+                        <p className="text-gray-500 dark:text-gray-400">Memuat profil...</p>
+                    </div>
+                </div>
+            </AppLayout>
+        );
+    }
+
+    // Error state
+    if (error) {
+        return (
+            <AppLayout>
+                <Head title="Edit Profil Toko" />
+                <div className="flex h-full flex-1 items-center justify-center p-4">
+                    <div className="flex flex-col items-center gap-4 text-center">
+                        <AlertCircle className="h-12 w-12 text-red-500" />
+                        <p className="text-gray-500 dark:text-gray-400">{error}</p>
+                        <Button onClick={fetchProfile} className="bg-teal-600 hover:bg-teal-700">
+                            Coba Lagi
+                        </Button>
+                    </div>
+                </div>
+            </AppLayout>
+        );
+    }
 
     return (
         <AppLayout>
@@ -46,10 +235,19 @@ export default function EditProfile() {
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4 pb-24 md:gap-8 md:p-8 md:pb-8">
                 <div className="mx-auto grid w-full max-w-2xl gap-2">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Profil Toko</h1>
-                    <p className="text-gray-500 dark:text-gray-400">
-                        Lengkapi informasi toko Anda agar mudah ditemukan pembeli.
-                    </p>
+                    <div className="flex items-center gap-3">
+                        <Store className="h-8 w-8 text-teal-600" />
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                                {isNewProfile ? 'Buat Profil Toko' : 'Edit Profil Toko'}
+                            </h1>
+                            <p className="text-gray-500 dark:text-gray-400">
+                                {isNewProfile
+                                    ? 'Lengkapi informasi toko Anda untuk mulai berjualan.'
+                                    : 'Perbarui informasi toko Anda kapan saja.'}
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="mx-auto grid w-full max-w-2xl gap-6">
@@ -64,27 +262,47 @@ export default function EditProfile() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="name">Nama Toko / Usaha</Label>
+                                    <Label htmlFor="nama_toko">Nama Toko / Usaha *</Label>
                                     <Input
-                                        id="name"
+                                        id="nama_toko"
                                         placeholder="Contoh: Warung Makan Bu Tini"
-                                        value={data.name}
-                                        onChange={(e) => setData('name', e.target.value)}
+                                        value={formData.nama_toko}
+                                        onChange={(e) => handleChange('nama_toko', e.target.value)}
                                         required
                                     />
-                                    {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+                                    {errors.nama_toko && <p className="text-sm text-red-500">{errors.nama_toko}</p>}
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="description">Deskripsi</Label>
+                                    <Label htmlFor="deskripsi">Deskripsi</Label>
                                     <textarea
-                                        id="description"
+                                        id="deskripsi"
                                         className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                         placeholder="Ceritakan sedikit tentang produk Anda..."
-                                        value={data.description}
-                                        onChange={(e) => setData('description', e.target.value)}
+                                        value={formData.deskripsi}
+                                        onChange={(e) => handleChange('deskripsi', e.target.value)}
                                     />
-                                    {errors.description && <p className="text-sm text-red-500">{errors.description}</p>}
+                                    {errors.deskripsi && <p className="text-sm text-red-500">{errors.deskripsi}</p>}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>Kategori *</Label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {categories.map((cat) => (
+                                            <button
+                                                key={cat.id}
+                                                type="button"
+                                                onClick={() => handleChange('kategori', cat.id)}
+                                                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${formData.kategori === cat.id
+                                                    ? 'bg-teal-600 text-white'
+                                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                                    }`}
+                                            >
+                                                {cat.emoji} {cat.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {errors.kategori && <p className="text-sm text-red-500">{errors.kategori}</p>}
                                 </div>
                             </CardContent>
                         </Card>
@@ -99,68 +317,112 @@ export default function EditProfile() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="whatsapp">Nomor WhatsApp</Label>
+                                    <Label htmlFor="nomor_wa">Nomor WhatsApp *</Label>
                                     <div className="flex items-center">
                                         <div className="flex h-10 items-center justify-center rounded-l-md border border-r-0 border-input bg-muted px-3 text-sm text-muted-foreground">
                                             +62
                                         </div>
                                         <Input
-                                            id="whatsapp"
+                                            id="nomor_wa"
                                             className="rounded-l-none"
                                             placeholder="81234567890"
                                             type="tel"
-                                            value={data.whatsapp}
-                                            onChange={(e) => setData('whatsapp', e.target.value.replace(/^0+/, ''))}
+                                            value={formData.nomor_wa}
+                                            onChange={(e) => handleChange('nomor_wa', e.target.value.replace(/^0+/, ''))}
                                             required
                                         />
                                     </div>
                                     <p className="text-xs text-gray-500">
                                         Nomor ini akan digunakan sebagai tujuan link chat "Pesan via WhatsApp".
                                     </p>
-                                    {errors.whatsapp && <p className="text-sm text-red-500">{errors.whatsapp}</p>}
+                                    {errors.nomor_wa && <p className="text-sm text-red-500">{errors.nomor_wa}</p>}
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="address">Alamat Lengkap</Label>
+                                    <Label htmlFor="alamat">Alamat Lengkap *</Label>
                                     <Input
-                                        id="address"
+                                        id="alamat"
                                         placeholder="Nama jalan, nomor, kelurahan, kecamatan..."
-                                        value={data.address}
-                                        onChange={(e) => setData('address', e.target.value)}
+                                        value={formData.alamat}
+                                        onChange={(e) => handleChange('alamat', e.target.value)}
                                         required
                                     />
+                                    {errors.alamat && <p className="text-sm text-red-500">{errors.alamat}</p>}
                                 </div>
 
                                 <div className="space-y-2">
                                     <LocationPicker
                                         label="Titik Lokasi (Map)"
-                                        value={{ lat: data.lat, lng: data.lng }}
+                                        value={{ lat: formData.latitude, lng: formData.longitude }}
                                         onChange={(val) => {
-                                            setData((prev) => ({
-                                                ...prev,
-                                                lat: val.lat,
-                                                lng: val.lng
-                                            }));
+                                            handleChange('latitude', val.lat);
+                                            handleChange('longitude', val.lng);
                                         }}
-                                        error={errors.lat || errors.lng}
+                                        error={errors.latitude || errors.longitude}
                                     />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="open_hours">Jam Operasional</Label>
+                                    <Input
+                                        id="open_hours"
+                                        placeholder="08:00 - 17:00"
+                                        value={formData.open_hours}
+                                        onChange={(e) => handleChange('open_hours', e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        id="is_open"
+                                        checked={formData.is_open}
+                                        onChange={(e) => handleChange('is_open', e.target.checked)}
+                                        className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                    />
+                                    <Label htmlFor="is_open" className="cursor-pointer">
+                                        Toko sedang buka
+                                    </Label>
                                 </div>
                             </CardContent>
                         </Card>
 
                         {/* Action Buttons */}
                         <div className="flex justify-end gap-4">
-                            <Button type="button" variant="outline">
+                            <Button type="button" variant="outline" onClick={() => router.visit('/seller')}>
                                 Batal
                             </Button>
-                            <Button type="submit" disabled={processing} className="bg-teal-600 hover:bg-teal-700">
-                                <Save className="mr-2 h-4 w-4" />
-                                Simpan Profil
+                            <Button type="submit" disabled={isSaving} className="bg-teal-600 hover:bg-teal-700">
+                                {isSaving ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Menyimpan...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="mr-2 h-4 w-4" />
+                                        {isNewProfile ? 'Buat Profil' : 'Simpan Profil'}
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </form>
                 </div>
             </div>
+
+            {/* Toast Notification */}
+            {toast && (
+                <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 fade-in duration-300">
+                    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white min-w-[280px] ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+                        {toast.type === 'success' ? (
+                            <CheckCircle className="h-5 w-5" />
+                        ) : (
+                            <AlertCircle className="h-5 w-5" />
+                        )}
+                        <span className="text-sm font-medium">{toast.message}</span>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }

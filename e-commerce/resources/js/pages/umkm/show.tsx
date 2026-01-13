@@ -38,12 +38,15 @@ function formatViews(views: number): string {
     return views.toString();
 }
 
+
+
 export default function ShowUMKM() {
     const { props } = usePage<{ id: string }>();
     const umkmId = props.id;
 
     const [umkm, setUmkm] = useState<Umkm | null>(null);
     const [reels, setReels] = useState<Reel[]>([]);
+
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'video' | 'liked'>('video');
@@ -56,27 +59,67 @@ export default function ShowUMKM() {
             setIsLoading(true);
             setError(null);
 
-            // Fetch UMKM profile
-            const umkmResponse = await fetch(UmkmController.showPublic.url(umkmId), {
+            // Fetch UMKM profile using direct API URL
+            const apiUrl = `/api/umkm/${umkmId}`;
+            console.log('Fetching UMKM from:', apiUrl);
+
+            const umkmResponse = await fetch(apiUrl, {
                 credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                },
             });
+
+            // Get response as text first to handle HTML error pages
+            const umkmText = await umkmResponse.text();
+            console.log('UMKM response preview:', umkmText.substring(0, 100));
+
+            // Check if response starts with HTML (server error page)
+            if (umkmText.trim().startsWith('<')) {
+                throw new Error('UMKM tidak ditemukan');
+            }
 
             if (!umkmResponse.ok) {
                 throw new Error('UMKM tidak ditemukan');
             }
 
-            const umkmData = await umkmResponse.json();
-            setUmkm(umkmData.data);
+            const umkmData = JSON.parse(umkmText);
 
-            // Fetch reels for this UMKM
-            const reelsResponse = await fetch(ReelsController.index.url({ query: { umkm_id: umkmId } }), {
-                credentials: 'include',
+            // Map API response to component interface
+            setUmkm({
+                id: umkmData.data.id,
+                name: umkmData.data.nama_toko,
+                description: umkmData.data.deskripsi || '',
+                address: umkmData.data.alamat || '',
+                whatsapp: umkmData.data.nomor_wa || '',
+                lat: umkmData.data.latitude,
+                lng: umkmData.data.longitude,
+                avatar: umkmData.data.avatar,
+                is_open: umkmData.data.is_open,
+                open_hours: umkmData.data.open_hours || '09:00 - 21:00',
+                category: umkmData.data.kategori,
             });
 
-            if (reelsResponse.ok) {
-                const reelsData = await reelsResponse.json();
-                setReels(reelsData.data || []);
+            // Fetch reels for this UMKM using direct API URL
+            try {
+                const reelsResponse = await fetch(`/api/reels?umkm_id=${umkmId}`, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                });
+
+                if (reelsResponse.ok) {
+                    const reelsText = await reelsResponse.text();
+                    if (!reelsText.trim().startsWith('<')) {
+                        const reelsData = JSON.parse(reelsText);
+                        setReels(reelsData.data || []);
+                    }
+                }
+            } catch (reelErr) {
+                console.error('Error fetching reels:', reelErr);
             }
+
         } catch (err) {
             console.error('Error fetching UMKM data:', err);
             setError(err instanceof Error ? err.message : 'Gagal memuat data UMKM');

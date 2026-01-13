@@ -242,9 +242,8 @@ export default function Content() {
     };
 
     const handleEdit = (video: VideoItem) => {
-        // Navigate to edit page (could be implemented later)
-        console.log('Editing video:', video.id);
-        showToast('Fitur edit akan segera tersedia', 'success');
+        // Navigate to edit page
+        router.visit(`/seller/content/${video.id}/edit`);
     };
 
     const handleDelete = (video: VideoItem) => {

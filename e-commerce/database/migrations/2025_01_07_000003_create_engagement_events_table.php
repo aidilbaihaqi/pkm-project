@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('engagement_events', function (Blueprint $table) {
             $table->id();
             $table->foreignId('reel_id')->constrained('reels')->onDelete('cascade');
-            $table->string('user_identifier', 255)->nullable();
+            $table->string('user_identifier', 64)->nullable();
             $table->enum('event_type', ['view', 'like', 'share', 'click_wa']);
             $table->timestamp('created_at')->nullable();
 

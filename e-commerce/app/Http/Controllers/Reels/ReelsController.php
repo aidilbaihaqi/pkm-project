@@ -23,19 +23,48 @@ class ReelsController extends Controller
      */
     public function index(FeedRequest $request): JsonResponse
     {
-        $lat = (float) $request->input('lat');
-        $lng = (float) $request->input('lng');
-        $radius = $request->getRadius();
-        $perPage = $request->getPerPage();
-        $page = $request->getPage();
+        // Check if fetching for specific UMKM (bypass location filter)
+        if ($request->has('umkm_id')) {
+            $umkmId = $request->input('umkm_id');
+            $perPage = $request->getPerPage();
+            
+            $reels = Reel::with('umkmProfile')
+                ->where('umkm_profile_id', $umkmId)
+                ->where('status', 'published')
+                ->orderBy('created_at', 'desc')
+                ->paginate($perPage);
 
-        $result = $this->locationService->getReelsWithinRadius(
-            $lat,
-            $lng,
-            $radius,
-            $perPage,
-            $page
-        );
+            $result = [
+                'data' => collect($reels->items()),
+                'meta' => [
+                    'current_page' => $reels->currentPage(),
+                    'last_page' => $reels->lastPage(),
+                    'per_page' => $reels->perPage(),
+                    'total' => $reels->total(),
+                ],
+            ];
+            
+            // Set distance to 0 for specific UMKM view as it's not relevant
+            $result['data']->transform(function ($reel) {
+                $reel->distance = 0;
+                return $reel;
+            });
+        } else {
+            // Standard location-based feed
+            $lat = (float) $request->input('lat');
+            $lng = (float) $request->input('lng');
+            $radius = $request->getRadius();
+            $perPage = $request->getPerPage();
+            $page = $request->getPage();
+    
+            $result = $this->locationService->getReelsWithinRadius(
+                $lat,
+                $lng,
+                $radius,
+                $perPage,
+                $page
+            );
+        }
 
         // Transform data to include distance in response
         $data = $result['data']->map(function ($reel) {
@@ -50,8 +79,11 @@ class ReelsController extends Controller
                 'type' => $reel->type,
                 'status' => $reel->status,
                 'whatsapp_link' => $reel->whatsapp_link,
+                'views_count' => $reel->views_count,
                 'distance_km' => round($reel->distance, 2),
+                'distance' => round($reel->distance * 1000), // in meters for sidebar
                 'created_at' => $reel->created_at,
+                'umkm_profile_id' => $reel->umkm_profile_id,
                 'umkm_profile' => [
                     'id' => $reel->umkmProfile->id,
                     'nama_toko' => $reel->umkmProfile->nama_toko,
