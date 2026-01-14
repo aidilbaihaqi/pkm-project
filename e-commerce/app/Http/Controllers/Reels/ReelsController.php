@@ -181,6 +181,21 @@ class ReelsController extends Controller
                 ];
             });
 
+            // Add is_liked status efficiently for global feed
+            $userIdentifier = $this->getUserIdentifier($request);
+            $reelIds = $globalData->pluck('id');
+            $likedReelIds = EngagementEvent::whereIn('reel_id', $reelIds)
+                ->where('event_type', EngagementEvent::TYPE_LIKE)
+                ->where('user_identifier', $userIdentifier)
+                ->pluck('reel_id')
+                ->flip()
+                ->toArray();
+
+            $globalData->transform(function ($item) use ($likedReelIds) {
+                $item['is_liked'] = isset($likedReelIds[$item['id']]);
+                return $item;
+            });
+
             return response()->json([
                 'message' => 'Menampilkan konten terbaru (di luar radius)',
                 'data' => $globalData,

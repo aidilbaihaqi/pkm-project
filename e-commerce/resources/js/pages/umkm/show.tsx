@@ -199,7 +199,7 @@ export default function ShowUMKM() {
         );
     }
 
-    const totalViews = reels.reduce((sum, reel) => sum + (reel.views_count || 0), 0);
+    const totalLikes = reels.reduce((sum, reel) => sum + (reel.likes_count || 0), 0);
 
     return (
         <AppLayout>
@@ -260,8 +260,8 @@ export default function ShowUMKM() {
                                         <span className="text-gray-500 dark:text-gray-400 ml-1">Video</span>
                                     </div>
                                     <div className="text-center">
-                                        <span className="font-bold text-gray-900 dark:text-white">{formatViews(totalViews)}</span>
-                                        <span className="text-gray-500 dark:text-gray-400 ml-1">Views</span>
+                                        <span className="font-bold text-gray-900 dark:text-white">{formatViews(totalLikes)}</span>
+                                        <span className="text-gray-500 dark:text-gray-400 ml-1">Suka</span>
                                     </div>
                                 </div>
                             </div>
@@ -392,10 +392,7 @@ export default function ShowUMKM() {
                                             <Play className="h-3 w-3 fill-white" />
                                             <span>{formatViews(reel.views_count || 0)}</span>
                                         </div>
-                                        <div className="flex items-center gap-1">
-                                            <Heart className="h-3 w-3 fill-white" />
-                                            <span>{formatViews(reel.likes_count || 0)}</span>
-                                        </div>
+
                                     </div>
                                 </div>
                             ))}

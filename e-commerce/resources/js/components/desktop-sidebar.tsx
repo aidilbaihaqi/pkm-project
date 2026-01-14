@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Home, Compass, Store, Info, PlusSquare, Video, User, Search, MapPin, Loader2 } from 'lucide-react';
+import { Home, Compass, Store, Info, PlusSquare, Video, User, Search, MapPin, Loader2, Users, Layers, BarChart2, ShieldAlert } from 'lucide-react';
 import { type SharedData } from '@/types';
 import { cn } from '@/lib/utils';
 import { useState, useEffect, useCallback } from 'react';
@@ -125,15 +125,29 @@ export function DesktopSidebar() {
             {/* Main Navigation */}
             <div className="flex-1 px-2 space-y-1">
                 {auth.user ? (
-                    // Seller Menu
-                    <>
-                        <SidebarItem href="/search" icon={Search} label="Cari" active={isActive('/search')} />
-                        <SidebarItem href="/" icon={Home} label="Beranda" active={isActive('/')} />
-                        <SidebarItem href="/explore" icon={Compass} label="Jelajahi" active={isActive('/explore')} />
-                        <SidebarItem href="/upload" icon={PlusSquare} label="Unggah" active={isActive('/upload')} />
-                        <SidebarItem href="/content" icon={Video} label="Konten" active={isActive('/content')} />
-                        <SidebarItem href="/seller/profile" icon={User} label="Profil UMKM" active={isActive('/seller/profile')} />
-                    </>
+                    auth.user.role === 'admin' ? (
+                        // Admin Menu
+                        <>
+                            <SidebarItem href="/admin" icon={Home} label="Dashboard" active={isActive('/admin')} />
+                            <SidebarItem href="/admin/sellers" icon={Users} label="Manajemen Seller" active={isActive('/admin/sellers')} />
+                            <SidebarItem href="/admin/categories" icon={Layers} label="Kategori Konten" active={isActive('/admin/categories')} />
+                            <SidebarItem href="/admin/stats" icon={BarChart2} label="Statistik" active={isActive('/admin/stats')} />
+                            <SidebarItem href="/admin/moderation" icon={ShieldAlert} label="Moderasi" active={isActive('/admin/moderation')} />
+
+                            <div className="my-2 border-t border-gray-100 dark:border-gray-800" />
+                            <SidebarItem href="/" icon={Compass} label="Lihat Web" active={isActive('/')} />
+                        </>
+                    ) : (
+                        // Seller Menu
+                        <>
+                            <SidebarItem href="/search" icon={Search} label="Cari" active={isActive('/search')} />
+                            <SidebarItem href="/" icon={Home} label="Beranda" active={isActive('/')} />
+                            <SidebarItem href="/explore" icon={Compass} label="Jelajahi" active={isActive('/explore')} />
+                            <SidebarItem href="/upload" icon={PlusSquare} label="Unggah" active={isActive('/upload')} />
+                            <SidebarItem href="/content" icon={Video} label="Konten" active={isActive('/content')} />
+                            <SidebarItem href="/seller/profile" icon={User} label="Profil UMKM" active={isActive('/seller/profile')} />
+                        </>
+                    )
                 ) : (
                     // Guest Menu
                     <>

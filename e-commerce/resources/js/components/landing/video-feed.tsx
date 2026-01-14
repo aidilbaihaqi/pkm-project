@@ -134,22 +134,23 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
             setError(null);
 
             let data;
+            const queryParams = new URLSearchParams({
+                lat: lat.toString(),
+                lng: lng.toString(),
+                radius: radius.toString(),
+                page: page.toString(),
+                per_page: '10'
+            });
+            const apiUrl = `/api/reels?${queryParams.toString()}`;
+
             try {
-                const response = await axios.get(
-                    ReelsController.index.url({
-                        query: { lat: lat.toString(), lng: lng.toString(), radius: radius.toString(), page: page.toString(), per_page: '10' }
-                    })
-                );
+                // Try authenticated request first
+                const response = await axios.get(apiUrl);
                 data = response.data;
             } catch (axiosError) {
                 console.warn('Axios fetch failed, falling back to guest fetch', axiosError);
-                // Fallback to fetch (Guest mode)
-                const response = await fetch(
-                    ReelsController.index.url({
-                        query: { lat: lat.toString(), lng: lng.toString(), radius: radius.toString(), page: page.toString(), per_page: '10' }
-                    }),
-                    { credentials: 'omit' }
-                );
+                // Fallback to fetch (Guest mode) - explicit URL string to avoid Ziggy errors
+                const response = await fetch(apiUrl, { credentials: 'omit' });
 
                 if (!response.ok) throw new Error('Failed to fetch reels (fallback)');
                 data = await response.json();
@@ -233,7 +234,7 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
         }
     }, [reels]);
     const [activeIndex, setActiveIndex] = useState(0);
-    const [isMuted, setIsMuted] = useState(true); // Default muted to ensure autoplay works
+    const [isMuted, setIsMuted] = useState(false); // Default unmuted as requested
     const [expandedReels, setExpandedReels] = useState<number[]>([]);
     const [viewedReels, setViewedReels] = useState<Set<number>>(new Set());
     const [carouselIndexes, setCarouselIndexes] = useState<Record<number, number>>({});

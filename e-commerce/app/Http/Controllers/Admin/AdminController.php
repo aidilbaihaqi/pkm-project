@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\EngagementEvent;
 use App\Models\Reel;
 use App\Models\UmkmProfile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
@@ -134,7 +136,7 @@ class AdminController extends Controller
      */
     public function stats(): JsonResponse
     {
-        $totalUsers = User::count();
+        $totalUsers = User::where('role', '!=', 'admin')->count();
         $totalSellers = User::where('role', User::ROLE_SELLER)->count();
         $totalReels = Reel::count();
         
@@ -155,5 +157,157 @@ class AdminController extends Controller
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Get trend statistics for charts.
+     * 
+     * @return JsonResponse
+     */
+    public function trendStats(): JsonResponse
+    {
+        // Daily engagement for last 7 days
+        $dailyEngagement = EngagementEvent::selectRaw('DATE(created_at) as date, event_type, COUNT(*) as count')
+            ->where('created_at', '>=', now()->subDays(7))
+            ->groupBy('date', 'event_type')
+            ->orderBy('date')
+            ->get()
+            ->groupBy('date')
+            ->map(function ($events, $date) {
+                return [
+                    'date' => $date,
+                    'views' => $events->where('event_type', EngagementEvent::TYPE_VIEW)->first()?->count ?? 0,
+                    'likes' => $events->where('event_type', EngagementEvent::TYPE_LIKE)->first()?->count ?? 0,
+                    'shares' => $events->where('event_type', EngagementEvent::TYPE_SHARE)->first()?->count ?? 0,
+                    'wa_clicks' => $events->where('event_type', EngagementEvent::TYPE_CLICK_WA)->first()?->count ?? 0,
+                ];
+            })
+            ->values();
+
+        // Top 5 sellers by views
+        $topSellers = User::where('role', User::ROLE_SELLER)
+            ->whereHas('umkmProfile')
+            ->with('umkmProfile')
+            ->get()
+            ->map(function ($seller) {
+                $reelIds = $seller->umkmProfile->reels()->pluck('id');
+                $views = EngagementEvent::whereIn('reel_id', $reelIds)
+                    ->where('event_type', EngagementEvent::TYPE_VIEW)
+                    ->count();
+                $likes = EngagementEvent::whereIn('reel_id', $reelIds)
+                    ->where('event_type', EngagementEvent::TYPE_LIKE)
+                    ->count();
+                return [
+                    'id' => $seller->id,
+                    'name' => $seller->name,
+                    'umkm_name' => $seller->umkmProfile->nama_toko,
+                    'views' => $views,
+                    'likes' => $likes,
+                    'reels_count' => $reelIds->count(),
+                ];
+            })
+            ->sortByDesc('views')
+            ->take(5)
+            ->values();
+
+        // New content per day (last 7 days)
+        $contentGrowth = Reel::selectRaw('DATE(created_at) as date, COUNT(*) as count')
+            ->where('created_at', '>=', now()->subDays(7))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        return response()->json([
+            'data' => [
+                'daily_engagement' => $dailyEngagement,
+                'top_sellers' => $topSellers,
+                'content_growth' => $contentGrowth,
+            ],
+        ]);
+    }
+
+    // --- Category Management ---
+
+    public function categories(Request $request): JsonResponse
+    {
+        $categories = Category::orderBy('name')->get();
+        return response()->json(['data' => $categories]);
+    }
+
+    public function storeCategory(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+        ]);
+
+        $category = Category::create([
+            'name' => $validated['name'],
+            'slug' => Str::slug($validated['name']),
+            'description' => $validated['description'],
+        ]);
+
+        return response()->json([
+            'message' => 'Category created successfully',
+            'data' => $category
+        ]);
+    }
+
+    public function updateCategory(Request $request, $id): JsonResponse
+    {
+        $category = Category::findOrFail($id);
+        
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+        ]);
+
+        $category->update([
+            'name' => $validated['name'],
+            'slug' => Str::slug($validated['name']),
+            'description' => $validated['description'],
+        ]);
+
+        return response()->json([
+            'message' => 'Category updated successfully',
+            'data' => $category
+        ]);
+    }
+
+    public function deleteCategory($id): JsonResponse
+    {
+        $category = Category::findOrFail($id);
+        $category->delete();
+
+        return response()->json(['message' => 'Category deleted successfully']);
+    }
+
+    // --- Moderation ---
+
+    public function moderation(Request $request): JsonResponse
+    {
+        $perPage = $request->input('per_page', 12);
+        
+        $reels = Reel::with(['umkmProfile.user'])
+            ->latest()
+            ->paginate($perPage);
+            
+        return response()->json([
+            'data' => $reels->items(),
+            'meta' => [
+                'current_page' => $reels->currentPage(),
+                'last_page' => $reels->lastPage(),
+                'total' => $reels->total(),
+            ]
+        ]);
+    }
+
+    public function deleteReel($id): JsonResponse
+    {
+        $reel = Reel::findOrFail($id);
+        // Optional: Delete physical file if needed
+        $reel->delete();
+
+        return response()->json(['message' => 'Video content removed successfully']);
     }
 }
