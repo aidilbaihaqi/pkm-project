@@ -12,10 +12,12 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface Stats {
-    total_views: number;
-    total_likes: number;
-    total_shares: number;
-    total_click_wa: number;
+    summary: {
+        total_views: number;
+        total_likes: number;
+        total_shares: number;
+        total_click_wa: number;
+    };
     reels: Array<{
         id: number;
         product_name: string;
@@ -121,7 +123,7 @@ export default function SellerDashboard() {
                                         <TrendingUp className="h-4 w-4 text-teal-500" />
                                     </div>
                                     <div className="text-3xl font-bold text-teal-700 dark:text-teal-300">
-                                        {(stats?.total_views || 0).toLocaleString()}
+                                        {(stats?.summary.total_views || 0).toLocaleString()}
                                     </div>
                                     <div className="text-sm text-teal-600 dark:text-teal-400 font-medium">Total Views</div>
                                 </div>
@@ -132,7 +134,7 @@ export default function SellerDashboard() {
                                         <TrendingUp className="h-4 w-4 text-green-500" />
                                     </div>
                                     <div className="text-3xl font-bold text-green-700 dark:text-green-300">
-                                        {(stats?.total_click_wa || 0).toLocaleString()}
+                                        {(stats?.summary.total_click_wa || 0).toLocaleString()}
                                     </div>
                                     <div className="text-sm text-green-600 dark:text-green-400 font-medium">WhatsApp Clicks</div>
                                 </div>
@@ -154,7 +156,7 @@ export default function SellerDashboard() {
                                         <TrendingUp className="h-4 w-4 text-red-500" />
                                     </div>
                                     <div className="text-3xl font-bold text-red-600 dark:text-red-300">
-                                        {(stats?.total_likes || 0).toLocaleString()}
+                                        {(stats?.summary.total_likes || 0).toLocaleString()}
                                     </div>
                                     <div className="text-sm text-red-500 dark:text-red-400 font-medium">Total Likes</div>
                                 </div>

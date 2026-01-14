@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowUp, ArrowDown, Heart, Share2, Volume2, VolumeX, Search, Play, Pause, ChevronLeft, Loader2 } from 'lucide-react';
 import ReelsController from '@/actions/App/Http/Controllers/Reels/ReelsController';
 import EngagementController from '@/actions/App/Http/Controllers/Engagement/EngagementController';
+import axios from 'axios';
 
 // Helper function to extract YouTube video ID from URL
 function getYouTubeVideoId(url: string): string | null {
@@ -42,6 +43,9 @@ interface ApiReel {
     images: string[] | null;
     status: string;
     whatsapp_link: string;
+    views_count?: number;
+    likes_count?: number;
+    is_liked?: boolean;
     distance_km: number;
     created_at: string;
     umkm_profile: {
@@ -65,6 +69,7 @@ interface Reel {
     whatsappLink: string;
     views: number;
     likes: number;
+    isLiked?: boolean;
     comments: number;
     distance?: string;
     images?: string[];
@@ -84,8 +89,9 @@ function transformApiReel(apiReel: ApiReel): Reel {
         description: apiReel.caption || undefined,
         whatsapp: '',
         whatsappLink: apiReel.whatsapp_link,
-        views: 0,
-        likes: 0,
+        views: apiReel.views_count || 0,
+        likes: apiReel.likes_count || 0,
+        isLiked: apiReel.is_liked || false,
         comments: 0,
         distance: apiReel.distance_km ? `${apiReel.distance_km}km` : undefined,
         videoUrl: apiReel.video_url || undefined,
@@ -127,17 +133,28 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
             }
             setError(null);
 
-            const response = await fetch(
-                ReelsController.index.url({
-                    query: { lat: lat.toString(), lng: lng.toString(), radius: radius.toString(), page: page.toString(), per_page: '10' }
-                })
-            );
+            let data;
+            try {
+                const response = await axios.get(
+                    ReelsController.index.url({
+                        query: { lat: lat.toString(), lng: lng.toString(), radius: radius.toString(), page: page.toString(), per_page: '10' }
+                    })
+                );
+                data = response.data;
+            } catch (axiosError) {
+                console.warn('Axios fetch failed, falling back to guest fetch', axiosError);
+                // Fallback to fetch (Guest mode)
+                const response = await fetch(
+                    ReelsController.index.url({
+                        query: { lat: lat.toString(), lng: lng.toString(), radius: radius.toString(), page: page.toString(), per_page: '10' }
+                    }),
+                    { credentials: 'omit' }
+                );
 
-            if (!response.ok) {
-                throw new Error('Failed to fetch reels');
+                if (!response.ok) throw new Error('Failed to fetch reels (fallback)');
+                data = await response.json();
             }
 
-            const data = await response.json();
             const transformedReels = (data.data || []).map(transformApiReel);
 
             if (append) {
@@ -204,13 +221,31 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
     }, [hasMore, reels.length]);
 
     const [likedReels, setLikedReels] = useState<number[]>([]);
+
+    // Initialize likedReels from loaded reels prop
+    useEffect(() => {
+        if (reels.length > 0) {
+            const initialLiked = reels.filter(r => r.isLiked).map(r => r.id);
+            setLikedReels(prev => {
+                const unique = new Set([...prev, ...initialLiked]);
+                return Array.from(unique);
+            });
+        }
+    }, [reels]);
     const [activeIndex, setActiveIndex] = useState(0);
-    const [isMuted, setIsMuted] = useState(false); // Default unmuted (sound ON)
+    const [isMuted, setIsMuted] = useState(true); // Default muted to ensure autoplay works
     const [expandedReels, setExpandedReels] = useState<number[]>([]);
     const [viewedReels, setViewedReels] = useState<Set<number>>(new Set());
     const [carouselIndexes, setCarouselIndexes] = useState<Record<number, number>>({});
     const [showHeartAnimation, setShowHeartAnimation] = useState<number | null>(null);
     const lastTapRef = useRef<{ time: number; reelId: number } | null>(null);
+    const [origin, setOrigin] = useState('');
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setOrigin(window.location.origin);
+        }
+    }, []);
 
     // Video control states
     const [videoProgress, setVideoProgress] = useState<Record<number, number>>({});
@@ -325,7 +360,16 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
                 const shouldPlay = reelIndex === activeIndex && currentSlide === 0;
 
                 if (shouldPlay) {
-                    video.play().catch(() => { });
+                    const playPromise = video.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(() => {
+                            // Auto-play was prevented.
+                            // Try muting and playing again
+                            video.muted = true;
+                            video.play().catch(e => console.error("Autoplay failed:", e));
+                            setIsMuted(true);
+                        });
+                    }
                     setIsPlaying(prev => ({ ...prev, [reelId]: true }));
                 } else {
                     video.pause();
@@ -364,6 +408,13 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
         });
     }, [isMuted]);
 
+    // Track views when active index changes
+    useEffect(() => {
+        if (reels.length > 0 && reels[activeIndex] && !viewedReels.has(reels[activeIndex].id)) {
+            trackView(reels[activeIndex]);
+        }
+    }, [activeIndex, reels]);
+
     const handleScroll = () => {
         if (!containerRef.current) return;
         const scrollTop = containerRef.current.scrollTop;
@@ -371,9 +422,6 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
         const index = Math.round(scrollTop / height);
         if (index !== activeIndex) {
             setActiveIndex(index);
-            if (reels[index] && !viewedReels.has(reels[index].id)) {
-                trackView(reels[index]);
-            }
         }
     };
 
@@ -529,13 +577,11 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
     };
 
     const toggleLike = (id: number) => {
-        const wasLiked = likedReels.includes(id);
         setLikedReels(prev =>
             prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
         );
-        if (!wasLiked) {
-            trackEngagement(id, 'like');
-        }
+        // Always track 'like' event to trigger backend toggle
+        trackEngagement(id, 'like');
     };
 
     const toggleExpand = (id: number) => {
@@ -549,11 +595,20 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
         const lastTap = lastTapRef.current;
 
         if (lastTap && lastTap.reelId === reelId && now - lastTap.time < 300) {
+            // Always show animation
+            setShowHeartAnimation(reelId);
+            setTimeout(() => setShowHeartAnimation(null), 800);
+
+            // Only toggle if not already liked (Safe Like)
             if (!likedReels.includes(reelId)) {
                 toggleLike(reelId);
-                setShowHeartAnimation(reelId);
-                setTimeout(() => setShowHeartAnimation(null), 800);
             }
+
+            // Haptic feedback
+            if (window.navigator && window.navigator.vibrate) {
+                window.navigator.vibrate(50);
+            }
+
             lastTapRef.current = null;
         } else {
             lastTapRef.current = { time: now, reelId };
@@ -769,10 +824,15 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
                                                                     <div className="absolute inset-0 flex items-center justify-center" style={{ transform: 'scale(1.2)' }}>
                                                                         <iframe
                                                                             ref={(el) => { youtubeRefs.current[reel.id] = el; }}
-                                                                            src={`https://www.youtube.com/embed/${getYouTubeVideoId(item.url)}?autoplay=0&mute=${isMuted ? 1 : 0}&loop=1&playlist=${getYouTubeVideoId(item.url)}&controls=0&modestbranding=1&rel=0&showinfo=0&playsinline=1&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1`}
+                                                                            src={`https://www.youtube.com/embed/${getYouTubeVideoId(item.url)}?autoplay=1&mute=${isMuted ? 1 : 0}&loop=1&playlist=${getYouTubeVideoId(item.url)}&controls=0&modestbranding=1&rel=0&showinfo=0&playsinline=1&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1&origin=${origin}`}
                                                                             className="w-full h-full"
                                                                             style={{ border: 'none', pointerEvents: 'none' }}
                                                                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                            onLoad={(e) => {
+                                                                                if (index === activeIndex && currentCarouselIndex === 0) {
+                                                                                    e.currentTarget.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'playVideo' }), '*');
+                                                                                }
+                                                                            }}
                                                                         />
                                                                     </div>
                                                                     {/* Play/Pause Indicator */}

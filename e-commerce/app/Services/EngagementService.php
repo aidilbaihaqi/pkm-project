@@ -70,6 +70,34 @@ class EngagementService
     }
 
     /**
+     * Toggle like status for a reel.
+     *
+     * @param int $reelId
+     * @param string $userIdentifier
+     * @return array Result with is_liked status
+     */
+    public function toggleLike(int $reelId, string $userIdentifier): array
+    {
+        $existingLike = EngagementEvent::where('reel_id', $reelId)
+            ->where('event_type', EngagementEvent::TYPE_LIKE)
+            ->where('user_identifier', $userIdentifier)
+            ->first();
+
+        if ($existingLike) {
+            $existingLike->delete();
+            return ['is_liked' => false];
+        } else {
+            EngagementEvent::create([
+                'reel_id' => $reelId,
+                'event_type' => EngagementEvent::TYPE_LIKE,
+                'user_identifier' => $userIdentifier,
+                'created_at' => now(),
+            ]);
+            return ['is_liked' => true];
+        }
+    }
+
+    /**
      * Get aggregated statistics for a seller's reels.
      *
      * @param int $umkmProfileId The UMKM profile ID

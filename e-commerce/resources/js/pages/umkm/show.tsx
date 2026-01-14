@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { MapPin, MessageCircle, Clock, Share2, Play, Heart, Grid3X3, Lock, ExternalLink, Check, Loader2 } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { MapPin, MessageCircle, Clock, Share2, Play, Heart, Grid3X3, Lock, ExternalLink, Check, Loader2, X, ArrowLeft, ArrowRight, Volume2, VolumeX } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
 import UmkmController from '@/actions/App/Http/Controllers/Umkm/UmkmController';
@@ -25,8 +25,12 @@ interface Reel {
     id: number;
     product_name: string;
     thumbnail_url: string | null;
-    video_url: string;
+    video_url: string | null;
     views_count: number;
+    likes_count?: number;
+    images: string[] | null;
+    type: 'video' | 'image';
+    caption: string | null;
 }
 
 function formatViews(views: number): string {
@@ -38,14 +42,13 @@ function formatViews(views: number): string {
     return views.toString();
 }
 
-
-
 export default function ShowUMKM() {
     const { props } = usePage<{ id: string }>();
     const umkmId = props.id;
 
     const [umkm, setUmkm] = useState<Umkm | null>(null);
     const [reels, setReels] = useState<Reel[]>([]);
+    const [selectedReel, setSelectedReel] = useState<Reel | null>(null);
 
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -196,12 +199,36 @@ export default function ShowUMKM() {
         );
     }
 
-    const totalLikes = reels.reduce((sum, reel) => sum + (reel.views_count || 0), 0);
+    const totalViews = reels.reduce((sum, reel) => sum + (reel.views_count || 0), 0);
 
     return (
         <AppLayout>
             <div className="min-h-screen bg-white pb-20 dark:bg-gray-950">
                 <Head title={`${umkm.name} - UMKMku`} />
+
+                {/* Modal for Reel Playback */}
+                {selectedReel && (
+                    <div className="fixed inset-0 z-100 bg-black/95 flex items-center justify-center p-0 md:p-4 backdrop-blur-sm">
+                        <button
+                            onClick={() => setSelectedReel(null)}
+                            className="absolute top-4 right-4 z-50 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+                        >
+                            <X className="h-6 w-6" />
+                        </button>
+
+                        <div className="w-full h-full md:max-w-4xl md:h-[90vh] bg-black rounded-lg overflow-hidden relative shadow-2xl">
+                            <ReelPlayer reel={selectedReel} />
+
+                            {/* Info Overlay */}
+                            <div className="absolute bottom-0 left-0 w-full p-4 bg-linear-to-t from-black via-black/50 to-transparent pointer-events-none">
+                                <div className="pointer-events-auto">
+                                    <h3 className="text-white font-bold text-lg">{selectedReel.product_name}</h3>
+                                    <p className="text-white/90 text-sm mt-1 line-clamp-2">{selectedReel.caption}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Profile Header */}
                 <div className="bg-white dark:bg-gray-950 pt-4 pb-4 px-4">
@@ -233,7 +260,7 @@ export default function ShowUMKM() {
                                         <span className="text-gray-500 dark:text-gray-400 ml-1">Video</span>
                                     </div>
                                     <div className="text-center">
-                                        <span className="font-bold text-gray-900 dark:text-white">{formatViews(totalLikes)}</span>
+                                        <span className="font-bold text-gray-900 dark:text-white">{formatViews(totalViews)}</span>
                                         <span className="text-gray-500 dark:text-gray-400 ml-1">Views</span>
                                     </div>
                                 </div>
@@ -342,10 +369,10 @@ export default function ShowUMKM() {
                     ) : reels.length > 0 ? (
                         <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
                             {reels.map((reel) => (
-                                <Link
+                                <div
                                     key={reel.id}
-                                    href={`/?reel=${reel.id}`}
-                                    className="relative aspect-[9/12] bg-gray-100 dark:bg-gray-800 overflow-hidden group"
+                                    onClick={() => setSelectedReel(reel)}
+                                    className="relative aspect-9/12 bg-gray-100 dark:bg-gray-800 overflow-hidden group cursor-pointer"
                                 >
                                     <img
                                         src={reel.thumbnail_url || '/images/video-placeholder.png'}
@@ -353,11 +380,24 @@ export default function ShowUMKM() {
                                         className="h-full w-full object-cover transition-transform group-hover:scale-105"
                                     />
                                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                                    <div className="absolute bottom-2 left-2 flex items-center gap-1 text-white text-xs font-medium drop-shadow-lg">
-                                        <Play className="h-3 w-3 fill-white" />
-                                        <span>{formatViews(reel.views_count || 0)}</span>
+                                    {reel.type === 'image' && reel.images && reel.images.length > 1 && (
+                                        <div className="absolute top-2 right-2">
+                                            <div className="bg-black/60 rounded-full p-1">
+                                                <Grid3X3 className="h-3 w-3 text-white" />
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="absolute bottom-2 left-2 flex items-center gap-3 text-white text-xs font-medium drop-shadow-lg">
+                                        <div className="flex items-center gap-1">
+                                            <Play className="h-3 w-3 fill-white" />
+                                            <span>{formatViews(reel.views_count || 0)}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <Heart className="h-3 w-3 fill-white" />
+                                            <span>{formatViews(reel.likes_count || 0)}</span>
+                                        </div>
                                     </div>
-                                </Link>
+                                </div>
                             ))}
                         </div>
                     ) : (
@@ -374,5 +414,128 @@ export default function ShowUMKM() {
                 </div>
             </div>
         </AppLayout>
+    );
+}
+
+// Reel Player Component (Internal)
+function ReelPlayer({ reel }: { reel: Reel }) {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [isMuted, setIsMuted] = useState(true); // Default muted for autoplay
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+    const [origin, setOrigin] = useState('');
+    const mediaItems: { type: 'video' | 'image', url: string }[] = [];
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setOrigin(window.location.origin);
+        }
+    }, []);
+
+    if (reel.video_url) mediaItems.push({ type: 'video', url: reel.video_url });
+    if (reel.images) reel.images.forEach(img => mediaItems.push({ type: 'image', url: img }));
+    if (mediaItems.length === 0 && reel.thumbnail_url) mediaItems.push({ type: 'image', url: reel.thumbnail_url });
+
+    const currentItem = mediaItems[currentIndex];
+    const isMulti = mediaItems.length > 1;
+
+    // Helper for YouTube
+    const getYouTubeVideoId = (url: string) => {
+        if (!url) return null;
+        const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+        return match ? match[1] : null;
+    };
+    const isYouTubeUrl = (url: string) => url?.includes('youtube.com') || url?.includes('youtu.be');
+
+    useEffect(() => {
+        setCurrentIndex(0);
+    }, [reel]);
+
+    const playVideo = () => {
+        if (iframeRef.current?.contentWindow) {
+            iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo' }), '*');
+        }
+    };
+
+    // Retry play logic
+    useEffect(() => {
+        if (currentItem?.type === 'video' && isYouTubeUrl(currentItem.url)) {
+            // Immediate attempt
+            playVideo();
+            // Retry sequence
+            const timers = [
+                setTimeout(playVideo, 500),
+                setTimeout(playVideo, 1000),
+                setTimeout(playVideo, 1500)
+            ];
+            return () => timers.forEach(clearTimeout);
+        }
+    }, [currentItem]);
+
+    return (
+        <div className="relative w-full h-full bg-black flex items-center justify-center group">
+            {currentItem?.type === 'video' ? (
+                isYouTubeUrl(currentItem.url) ? (
+                    <iframe
+                        ref={iframeRef}
+                        src={`https://www.youtube.com/embed/${getYouTubeVideoId(currentItem.url)}?autoplay=1&mute=1&loop=1&playlist=${getYouTubeVideoId(currentItem.url)}&controls=0&modestbranding=1&rel=0&showinfo=0&enablejsapi=1&origin=${origin}`}
+                        className="w-full h-full"
+                        allow="autoplay; encrypted-media"
+                        onLoad={playVideo}
+                    />
+                ) : (
+                    <video
+                        src={currentItem.url}
+                        autoPlay
+                        muted={isMuted}
+                        controls={false}
+                        loop
+                        className="w-full h-full object-contain"
+                        onClick={() => setIsMuted(!isMuted)}
+                        ref={(el) => {
+                            if (el) {
+                                el.play().catch(() => {
+                                    el.muted = true;
+                                    el.play();
+                                });
+                            }
+                        }}
+                    />
+                )
+            ) : (
+                <img src={currentItem?.url} className="w-full h-full object-contain" />
+            )}
+
+            {/* Navigation */}
+            {isMulti && (
+                <>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setCurrentIndex(prev => prev === 0 ? mediaItems.length - 1 : prev - 1); }}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 z-20"
+                    >
+                        <ArrowLeft className="h-6 w-6" />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setCurrentIndex(prev => (prev + 1) % mediaItems.length); }}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 z-20"
+                    >
+                        <ArrowRight className="h-6 w-6" />
+                    </button>
+                    <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+                        {mediaItems.map((_, idx) => (
+                            <div key={idx} className={cn("h-1.5 rounded-full transition-all", idx === currentIndex ? "w-6 bg-white" : "w-1.5 bg-white/50")} />
+                        ))}
+                    </div>
+                </>
+            )}
+            {/* Unmute Indication for Video */}
+            {currentItem?.type === 'video' && !isYouTubeUrl(currentItem.url) && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted) }}
+                    className="absolute top-4 left-4 p-2 bg-black/50 text-white rounded-full z-20"
+                >
+                    {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                </button>
+            )}
+        </div>
     );
 }

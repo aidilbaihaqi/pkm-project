@@ -35,7 +35,7 @@ class Reel extends Model
      *
      * @var array<int, string>
      */
-    protected $appends = ['whatsapp_link', 'views_count'];
+    protected $appends = ['whatsapp_link', 'views_count', 'likes_count'];
 
     /**
      * Get the attributes that should be cast.
@@ -94,5 +94,14 @@ class Reel extends Model
     public function getViewsCountAttribute(): int
     {
         return $this->engagementEvents()->where('event_type', 'view')->count();
+    }
+
+    /**
+     * Get the likes count for the reel.
+     * Counts engagement events with type 'like'.
+     */
+    public function getLikesCountAttribute(): int
+    {
+        return $this->engagementEvents()->where('event_type', 'like')->count();
     }
 }

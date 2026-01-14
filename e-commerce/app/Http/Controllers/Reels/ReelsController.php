@@ -11,7 +11,7 @@ use App\Services\LocationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-
+use App\Models\EngagementEvent;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -112,6 +112,7 @@ class ReelsController extends Controller
                 'status' => $reel->status,
                 'whatsapp_link' => $reel->whatsapp_link,
                 'views_count' => $reel->views_count,
+                'likes_count' => $reel->likes_count,
                 'distance_km' => round($reel->distance, 2),
                 'distance' => round($reel->distance * 1000), // in meters for sidebar
                 'created_at' => $reel->created_at,
@@ -124,6 +125,21 @@ class ReelsController extends Controller
                     'is_open' => $reel->umkmProfile->is_open,
                 ],
             ];
+        });
+
+        // Add is_liked status efficiently
+        $userIdentifier = $this->getUserIdentifier($request);
+        $reelIds = $data->pluck('id');
+        $likedReelIds = EngagementEvent::whereIn('reel_id', $reelIds)
+            ->where('event_type', EngagementEvent::TYPE_LIKE)
+            ->where('user_identifier', $userIdentifier)
+            ->pluck('reel_id')
+            ->flip()
+            ->toArray();
+
+        $data->transform(function ($item) use ($likedReelIds) {
+            $item['is_liked'] = isset($likedReelIds[$item['id']]);
+            return $item;
         });
 
         if ($data->isEmpty()) {
@@ -150,6 +166,7 @@ class ReelsController extends Controller
                     'status' => $reel->status,
                     'whatsapp_link' => $reel->whatsapp_link,
                     'views_count' => $reel->views_count,
+                    'likes_count' => $reel->likes_count,
                     'distance_km' => 0,
                     'distance' => 0,
                     'created_at' => $reel->created_at,
@@ -216,6 +233,9 @@ class ReelsController extends Controller
                 'images' => $reel->images,
                 'status' => $reel->status,
                 'whatsapp_link' => $reel->whatsapp_link,
+                'views_count' => $reel->views_count,
+                'likes_count' => $reel->likes_count,
+                'is_liked' => $this->checkIfLiked($reel->id, $request),
                 'created_at' => $reel->created_at,
                 'updated_at' => $reel->updated_at,
                 'umkm_profile' => $reel->umkmProfile ? [
@@ -343,8 +363,14 @@ class ReelsController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
 
+        // Map reels to include is_liked status
+        $data = collect($reels->items())->map(function ($reel) use ($request) {
+            $reel->is_liked = $this->checkIfLiked($reel->id, $request);
+            return $reel;
+        });
+
         return response()->json([
-            'data' => $reels->items(),
+            'data' => $data,
             'meta' => [
                 'current_page' => $reels->currentPage(),
                 'last_page' => $reels->lastPage(),
@@ -374,5 +400,28 @@ class ReelsController extends Controller
         Storage::disk('public')->put($filename, $imageData);
         
         return '/storage/' . $filename;
+    }
+
+    /**
+     * Get user identifier for engagement tracking.
+     */
+    private function getUserIdentifier(Request $request): string
+    {
+        $user = $request->user();
+        if ($user) {
+            return 'user:' . $user->id;
+        }
+        return 'ip:' . $request->ip();
+    }
+
+    /**
+     * Check if a single reel is liked by current user.
+     */
+    private function checkIfLiked(int $reelId, Request $request): bool
+    {
+        return EngagementEvent::where('reel_id', $reelId)
+            ->where('event_type', EngagementEvent::TYPE_LIKE)
+            ->where('user_identifier', $this->getUserIdentifier($request))
+            ->exists();
     }
 }

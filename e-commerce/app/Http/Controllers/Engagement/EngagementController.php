@@ -48,6 +48,18 @@ class EngagementController extends Controller
         $eventType = $request->input('event_type');
         $userIdentifier = $request->getUserIdentifier();
 
+        if ($eventType === 'like') {
+            $result = $this->engagementService->toggleLike($reelId, $userIdentifier);
+            return response()->json([
+                'message' => $result['is_liked'] ? 'Berhasil menyukai video' : 'Batal menyukai video',
+                'data' => [
+                    'reel_id' => $reelId,
+                    'event_type' => $eventType,
+                    'is_liked' => $result['is_liked'],
+                ],
+            ], 200);
+        }
+
         // Record the event (with throttling handled by service)
         $recorded = $this->engagementService->recordEvent(
             $reelId,

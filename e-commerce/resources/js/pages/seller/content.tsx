@@ -24,6 +24,7 @@ interface ApiReel {
     created_at: string;
     updated_at: string;
     views_count?: number;
+    likes_count?: number;
 }
 
 // Internal video type
@@ -64,7 +65,7 @@ function transformApiReel(apiReel: ApiReel): VideoItem {
         images: apiReel.images || [],
         imageCount: apiReel.images?.length || 0,
         views: apiReel.views_count || 0,
-        likes: 0,
+        likes: apiReel.likes_count || 0,
         createdAt: apiReel.created_at,
     };
 }
