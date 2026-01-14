@@ -61,4 +61,34 @@ class UmkmProfile extends Model
     {
         return $this->hasMany(Reel::class);
     }
+
+    /**
+     * Get the avatar URL.
+     * Accessor for avatar attribute.
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (empty($this->avatar)) {
+            return null;
+        }
+
+        // If already a full URL, return as-is
+        if (str_starts_with($this->avatar, 'http')) {
+            return $this->avatar;
+        }
+
+        // If it's a storage path, return full URL
+        if (str_starts_with($this->avatar, '/storage')) {
+            return url($this->avatar);
+        }
+
+        return $this->avatar;
+    }
+
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array<int, string>
+     */
+    protected $appends = ['avatar_url'];
 }

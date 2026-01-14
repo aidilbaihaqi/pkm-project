@@ -41,15 +41,12 @@ export function DesktopHeader() {
                                 <DropdownMenuLabel>{auth.user.name}</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem asChild>
-                                    <Link href="/seller/profile">Profile</Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link href="/settings">Settings</Link>
+                                    <Link href="/settings/profile">Pengaturan Akun</Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem asChild className="text-red-500 cursor-pointer">
                                     <Link href="/logout" method="post" as="button" className="w-full text-left">
-                                        Log out
+                                        Keluar
                                     </Link>
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -64,6 +61,6 @@ export function DesktopHeader() {
                     </div>
                 )}
             </div>
-        </header>
+        </header >
     );
 }

@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     Play, Eye, Heart, MoreVertical, Edit, Trash2,
     PlusCircle, Filter, Grid, List, Clock, CheckCircle,
-    AlertCircle, Youtube, Loader2
+    AlertCircle, Youtube, Loader2, X, Image as ImageIcon
 } from 'lucide-react';
 import ReelsController from '@/actions/App/Http/Controllers/Reels/ReelsController';
 
@@ -19,9 +19,11 @@ interface ApiReel {
     price: string | null;
     kategori: string;
     type: 'video' | 'image';
+    images: string[] | null;
     status: 'draft' | 'review' | 'published';
     created_at: string;
     updated_at: string;
+    views_count?: number;
 }
 
 // Internal video type
@@ -33,6 +35,9 @@ interface VideoItem {
     caption: string;
     category: string;
     status: 'published' | 'draft' | 'review';
+    type: 'video' | 'image';
+    images: string[];
+    imageCount: number;
     views: number;
     likes: number;
     createdAt: string;
@@ -55,7 +60,10 @@ function transformApiReel(apiReel: ApiReel): VideoItem {
         caption: apiReel.caption || '',
         category: apiReel.kategori,
         status: apiReel.status,
-        views: 0,
+        type: apiReel.type,
+        images: apiReel.images || [],
+        imageCount: apiReel.images?.length || 0,
+        views: apiReel.views_count || 0,
         likes: 0,
         createdAt: apiReel.created_at,
     };
@@ -74,18 +82,80 @@ function VideoCard({ video, viewMode, onEdit, onDelete }: {
     onDelete: (video: VideoItem) => void;
 }) {
     const [showMenu, setShowMenu] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentSlide, setCurrentSlide] = useState(0);
     const status = statusConfig[video.status];
     const StatusIcon = status.icon;
     const thumbnail = video.thumbnailUrl || (video.youtubeId ? `https://img.youtube.com/vi/${video.youtubeId}/mqdefault.jpg` : 'https://via.placeholder.com/320x180');
+    const isVideo = video.type === 'video' && video.youtubeId;
+
+    // Construct media items array
+    const mediaItems: { type: 'video' | 'image', url: string }[] = [];
+    if (isVideo) {
+        mediaItems.push({ type: 'video', url: video.youtubeId as string });
+    }
+    if (video.images && video.images.length > 0) {
+        video.images.forEach(img => mediaItems.push({ type: 'image', url: img }));
+    } else if (!isVideo) {
+        // Fallback or Image only without images array (shouldn't happen with new logic but good for safety)
+        mediaItems.push({ type: 'image', url: thumbnail });
+    }
+
+    const hasMultipleSlides = mediaItems.length > 1;
+
+    const nextSlide = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setCurrentSlide((prev) => (prev + 1) % mediaItems.length);
+        setIsPlaying(false);
+    };
+
+    const prevSlide = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setCurrentSlide((prev) => (prev - 1 + mediaItems.length) % mediaItems.length);
+        setIsPlaying(false);
+    };
 
     if (viewMode === 'list') {
         return (
             <div className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
-                <div className="relative w-32 h-20 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
-                    <img src={thumbnail} alt={video.title} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                        <Play className="h-6 w-6 text-white" />
-                    </div>
+                <div className="relative w-32 h-20 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0 group">
+                    {/* List view playback - optional, but helpful */}
+                    {isPlaying && isVideo && currentSlide === 0 ? (
+                        <iframe
+                            src={`https://www.youtube.com/embed/${video.youtubeId}?autoplay=1&hl=id`}
+                            title={video.title}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                        />
+                    ) : (
+                        <>
+                            {/* Display current slide thumbnail */}
+                            <img
+                                src={mediaItems[currentSlide]?.type === 'video' ? thumbnail : mediaItems[currentSlide]?.url}
+                                alt={video.title}
+                                className="w-full h-full object-cover"
+                            />
+
+                            {mediaItems[currentSlide]?.type === 'video' && (
+                                <button
+                                    onClick={() => setIsPlaying(true)}
+                                    className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors"
+                                >
+                                    <Play className="h-6 w-6 text-white opacity-80 group-hover:opacity-100 transition-opacity" />
+                                </button>
+                            )}
+
+                            {hasMultipleSlides && (
+                                <div className="absolute top-1 right-1 flex items-center gap-0.5 bg-black/60 px-1 py-0.5 rounded text-[10px] text-white z-10">
+                                    <ImageIcon className="h-3 w-3" />
+                                    <span>{mediaItems.length}</span>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
                 <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 dark:text-white truncate">{video.title}</h3>
@@ -96,6 +166,12 @@ function VideoCard({ video, viewMode, onEdit, onDelete }: {
                             {status.label}
                         </span>
                         <span className="text-xs text-gray-400">{video.category}</span>
+                        {hasMultipleSlides && (
+                            <span className="flex items-center gap-1 text-xs text-gray-400">
+                                <ImageIcon className="h-3 w-3" />
+                                {mediaItems.length} items
+                            </span>
+                        )}
                     </div>
                 </div>
                 <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
@@ -131,16 +207,82 @@ function VideoCard({ video, viewMode, onEdit, onDelete }: {
 
     // Grid view
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow group">
             <div className="relative aspect-video bg-gray-100 dark:bg-gray-700">
-                <img src={thumbnail} alt={video.title} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
-                    <Play className="h-10 w-10 text-white" />
-                </div>
-                <span className={`absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
-                    <StatusIcon className="h-3 w-3" />
-                    {status.label}
-                </span>
+                {mediaItems[currentSlide]?.type === 'video' && isPlaying ? (
+                    <div className="w-full h-full relative">
+                        <iframe
+                            src={`https://www.youtube.com/embed/${video.youtubeId}?autoplay=1&hl=id`}
+                            title={video.title}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                        />
+                        <button
+                            onClick={() => setIsPlaying(false)}
+                            className="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        <img
+                            src={mediaItems[currentSlide]?.type === 'video' ? thumbnail : mediaItems[currentSlide]?.url}
+                            alt={video.title}
+                            className="w-full h-full object-cover transition-transform duration-500"
+                        />
+
+                        {mediaItems[currentSlide]?.type === 'video' ? (
+                            <button
+                                onClick={() => setIsPlaying(true)}
+                                className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity cursor-pointer group-hover:opacity-100"
+                            >
+                                <div className="p-3 bg-white/20 backdrop-blur-sm rounded-full border border-white/50">
+                                    <Play className="h-8 w-8 text-white fill-white" />
+                                </div>
+                            </button>
+                        ) : (
+                            // Image indicator if it's an image slide
+                            <div className="absolute top-2 right-2 p-1.5 bg-black/40 backdrop-blur-md rounded-lg text-white">
+                                <ImageIcon className="h-4 w-4" />
+                            </div>
+                        )}
+
+                        <span className={`absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
+                            <StatusIcon className="h-3 w-3" />
+                            {status.label}
+                        </span>
+
+                        {/* Navigation Arrows */}
+                        {hasMultipleSlides && (
+                            <>
+                                <button
+                                    onClick={prevSlide}
+                                    className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/30 text-white hover:bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                                </button>
+                                <button
+                                    onClick={nextSlide}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/30 text-white hover:bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                                </button>
+
+                                {/* Dots Indicator */}
+                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                                    {mediaItems.map((_, idx) => (
+                                        <div
+                                            key={idx}
+                                            className={`h-1.5 rounded-full transition-all ${idx === currentSlide ? 'w-4 bg-white' : 'w-1.5 bg-white/50'}`}
+                                        />
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </>
+                )}
             </div>
             <div className="p-4">
                 <h3 className="font-semibold text-gray-900 dark:text-white truncate mb-1">{video.title}</h3>

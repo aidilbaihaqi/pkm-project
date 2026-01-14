@@ -34,7 +34,7 @@ function getYouTubeVideoId(url: string): string | null {
 type ContentType = 'video' | 'images';
 
 export default function Upload() {
-    const [contentType, setContentType] = useState<ContentType>('images');
+    // Removed contentType toggle - both photo and video can be uploaded together
     const [youtubeUrl, setYoutubeUrl] = useState('');
     const [videoId, setVideoId] = useState<string | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -81,14 +81,27 @@ export default function Upload() {
         setApiError(null);
 
         try {
+            // Convert images to base64
+            const imageBase64Array: string[] = [];
+            for (const image of images) {
+                const base64 = await fileToBase64(image);
+                imageBase64Array.push(base64);
+            }
+
+            // Determine content type based on what's uploaded
+            const hasVideo = youtubeUrl && videoId;
+            const hasImages = images.length > 0;
+            const contentType = hasVideo ? 'video' : 'image';
+
             const formData = {
-                video_url: contentType === 'video' ? youtubeUrl : null,
-                thumbnail_url: thumbnailPreview || (videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : imagePreviews[0] || null),
+                video_url: youtubeUrl || null,
+                thumbnail_url: thumbnailPreview || (videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : imageBase64Array[0] || null),
+                images: imageBase64Array.length > 0 ? imageBase64Array : null,
                 product_name: productName,
                 caption: caption,
                 price: price ? parseFloat(price.replace(/\D/g, '')) : null,
                 kategori: selectedCategory,
-                type: contentType === 'video' ? 'video' : 'image',
+                type: contentType,
                 status: status,
             };
 
@@ -184,7 +197,17 @@ export default function Upload() {
         fileInputRef.current?.click();
     };
 
-    const hasContent = contentType === 'video' ? videoId : images.length > 0;
+    // Convert file to base64
+    const fileToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
+        });
+    };
+
+    const hasContent = videoId || images.length > 0;
 
     return (
         <AppLayout>
@@ -204,130 +227,91 @@ export default function Upload() {
                 {/* API Error Alert */}
                 {apiError && (
                     <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                        <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                         <div>
                             <p className="text-sm text-red-700 dark:text-red-300">{apiError}</p>
                         </div>
                     </div>
                 )}
 
-                {/* Content Type Toggle */}
-                <div className="flex gap-2 mb-6 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
-                    <button
-                        type="button"
-                        onClick={() => setContentType('images')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-medium transition-colors ${contentType === 'images'
-                            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow'
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                            }`}
-                    >
-                        <Image className="h-5 w-5" />
-                        Foto
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setContentType('video')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-medium transition-colors ${contentType === 'video'
-                            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow'
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                            }`}
-                    >
-                        <Video className="h-5 w-5" />
-                        Video
-                    </button>
-                </div>
-
                 <form onSubmit={(e) => handleSubmit(e, 'published')} className="space-y-6">
-                    {/* Image Upload Section */}
-                    {contentType === 'images' && (
-                        <div>
-                            <Label className="flex items-center gap-2 mb-2">
-                                <Image className="h-4 w-4 text-blue-500" />
-                                Foto Produk (Maks. 10)
-                            </Label>
-                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                                {imagePreviews.map((preview, index) => (
-                                    <div key={index} className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                        <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
-                                        <button
-                                            type="button"
-                                            onClick={() => removeImage(index)}
-                                            className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                        {index === 0 && (
-                                            <span className="absolute bottom-1 left-1 px-2 py-0.5 bg-umkm-orange text-white text-[10px] font-medium rounded">
-                                                Cover
-                                            </span>
-                                        )}
-                                    </div>
-                                ))}
-                                {images.length < 10 && (
+                    {/* Image Upload Section - Always visible */}
+                    <div>
+                        <Label className="flex items-center gap-2 mb-2">
+                            <Image className="h-4 w-4 text-blue-500" />
+                            Foto Produk (Opsional, Maks. 10)
+                        </Label>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                            {imagePreviews.map((preview, index) => (
+                                <div key={index} className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                    <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
                                     <button
                                         type="button"
-                                        onClick={triggerFileInput}
-                                        className="aspect-square rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 hover:border-umkm-orange hover:text-umkm-orange transition-colors bg-gray-50 dark:bg-gray-800/50"
+                                        onClick={() => removeImage(index)}
+                                        className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
                                     >
-                                        <Plus className="h-6 w-6 mb-1" />
-                                        <span className="text-xs">Tambah</span>
+                                        <X className="h-3 w-3" />
                                     </button>
-                                )}
-                            </div>
-                            <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                                Foto pertama akan jadi cover. Format: JPG, PNG, WebP
-                            </p>
+                                    {index === 0 && (
+                                        <span className="absolute bottom-1 left-1 px-2 py-0.5 bg-umkm-orange text-white text-[10px] font-medium rounded">
+                                            Cover
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
+                            {images.length < 10 && (
+                                <button
+                                    type="button"
+                                    onClick={triggerFileInput}
+                                    className="aspect-square rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 hover:border-umkm-orange hover:text-umkm-orange transition-colors bg-gray-50 dark:bg-gray-800/50"
+                                >
+                                    <Plus className="h-6 w-6 mb-1" />
+                                    <span className="text-xs">Tambah</span>
+                                </button>
+                            )}
                         </div>
-                    )}
+                        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                            Foto pertama akan jadi cover. Format: JPG, PNG, WebP
+                        </p>
+                    </div>
 
-                    {/* YouTube URL Input */}
-                    {contentType === 'video' && (
-                        <>
-                            <div>
-                                <Label htmlFor="youtube_url" className="flex items-center gap-2 mb-2">
-                                    <Youtube className="h-4 w-4 text-red-500" />
-                                    Link Video YouTube
-                                </Label>
-                                <Input
-                                    id="youtube_url"
-                                    type="url"
-                                    placeholder="https://youtube.com/watch?v=... atau https://youtu.be/..."
-                                    value={youtubeUrl}
-                                    onChange={(e) => setYoutubeUrl(e.target.value)}
-                                    className="dark:bg-gray-800 dark:border-gray-700"
-                                />
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Mendukung format: youtube.com/watch, youtu.be, youtube.com/shorts
-                                </p>
-                            </div>
+                    {/* YouTube URL Input - Always visible */}
+                    <div>
+                        <Label htmlFor="youtube_url" className="flex items-center gap-2 mb-2">
+                            <Youtube className="h-4 w-4 text-red-500" />
+                            Link Video YouTube (Opsional)
+                        </Label>
+                        <Input
+                            id="youtube_url"
+                            type="url"
+                            placeholder="https://youtube.com/watch?v=... atau https://youtu.be/..."
+                            value={youtubeUrl}
+                            onChange={(e) => setYoutubeUrl(e.target.value)}
+                            className="dark:bg-gray-800 dark:border-gray-700"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Mendukung format: youtube.com/watch, youtu.be, youtube.com/shorts
+                        </p>
+                    </div>
 
-                            {videoId && (
-                                <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
-                                    <iframe
-                                        src={`https://www.youtube.com/embed/${videoId}?hl=id`}
-                                        title="YouTube video preview"
-                                        className="w-full h-full"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                        allowFullScreen
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={clearVideo}
-                                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                </div>
-                            )}
-
-                            {!videoId && (
-                                <div className="rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 aspect-video flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/50">
-                                    <Play className="h-12 w-12 mb-2" />
-                                    <p className="text-sm">Preview video akan muncul di sini</p>
-                                </div>
-                            )}
-                        </>
+                    {videoId && (
+                        <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
+                            <iframe
+                                src={`https://www.youtube.com/embed/${videoId}?hl=id`}
+                                title="YouTube video preview"
+                                className="w-full h-full"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                            />
+                            <button
+                                type="button"
+                                onClick={clearVideo}
+                                className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
                     )}
 
                     {/* Product Name */}
@@ -498,7 +482,7 @@ export default function Upload() {
                             <Button
                                 type="submit"
                                 disabled={!hasContent || !productName || !selectedCategory || isUploading}
-                                className="flex-[2] h-12 bg-umkm-orange hover:bg-umkm-orange-dark text-white font-semibold rounded-xl text-base"
+                                className="flex-2 h-12 bg-umkm-orange hover:bg-umkm-orange-dark text-white font-semibold rounded-xl text-base"
                             >
                                 <UploadIcon className="h-5 w-5 mr-2" />
                                 {isUploading ? 'Mengupload...' : 'Publish'}
@@ -519,8 +503,9 @@ export default function Upload() {
                         </button>
 
                         <div className="w-full max-w-md mx-auto">
-                            <div className="relative aspect-[9/16] bg-gray-900 rounded-2xl overflow-hidden">
-                                {contentType === 'video' && videoId && (
+                            <div className="relative aspect-9/16 bg-gray-900 rounded-2xl overflow-hidden">
+                                {/* Show video if available, otherwise show first image */}
+                                {videoId && (
                                     <iframe
                                         src={`https://www.youtube.com/embed/${videoId}?autoplay=1&hl=id`}
                                         title="Preview"
@@ -529,11 +514,11 @@ export default function Upload() {
                                         allowFullScreen
                                     />
                                 )}
-                                {contentType === 'images' && imagePreviews[0] && (
+                                {!videoId && imagePreviews[0] && (
                                     <img src={imagePreviews[0]} alt="Preview" className="w-full h-full object-cover" />
                                 )}
 
-                                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
+                                <div className="absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/80 to-transparent">
                                     <p className="text-white font-semibold text-lg">
                                         {productName || 'Nama Produk'}
                                     </p>

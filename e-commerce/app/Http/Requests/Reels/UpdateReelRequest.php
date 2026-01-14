@@ -48,6 +48,8 @@ class UpdateReelRequest extends FormRequest
                 'regex:/^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)[a-zA-Z0-9_-]+/',
             ],
             'thumbnail_url' => ['nullable', 'string', 'max:500'],
+            'images' => ['nullable', 'array'],
+            'images.*' => ['nullable', 'string'],
             'product_name' => ['sometimes', 'required', 'string', 'max:255'],
             'caption' => ['nullable', 'string'],
             'price' => ['nullable', 'numeric', 'min:0'],

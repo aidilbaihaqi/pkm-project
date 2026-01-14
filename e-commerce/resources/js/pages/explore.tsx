@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppLayout } from '@/layouts/app-layout';
 import { Head, Link } from '@inertiajs/react';
-import { Play, Heart, MapPin, Store, Search, ChevronRight, Loader2 } from 'lucide-react';
+import { Play, Heart, MapPin, Store, Search, ChevronRight, Loader2, X, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReelsController from '@/actions/App/Http/Controllers/Reels/ReelsController';
 
-// API Reel type matching backend response
+// API Reel type matching backend response (Expanded)
 interface ApiReel {
     id: number;
     video_url: string | null;
@@ -15,6 +15,7 @@ interface ApiReel {
     price: string | null;
     kategori: string;
     type: 'video' | 'image';
+    images: string[] | null;
     status: string;
     whatsapp_link: string;
     distance_km: number;
@@ -38,6 +39,10 @@ interface ExploreItem {
     category: string;
     location: string;
     distance: string;
+    videoUrl?: string;
+    images?: string[];
+    description?: string;
+    productName: string;
 }
 
 // Transform API response to internal type
@@ -51,7 +56,29 @@ function transformApiReel(apiReel: ApiReel): ExploreItem {
         category: apiReel.kategori,
         location: 'Indonesia',
         distance: apiReel.distance_km ? `${apiReel.distance_km}km` : '',
+        videoUrl: apiReel.video_url || undefined,
+        images: apiReel.images || undefined,
+        description: apiReel.caption || undefined,
+        productName: apiReel.product_name,
     };
+}
+
+// Helper function to extract YouTube video ID from URL
+function getYouTubeVideoId(url: string): string | null {
+    if (!url) return null;
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    ];
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    return null;
+}
+
+function isYouTubeUrl(url: string): boolean {
+    return url?.includes('youtube.com') || url?.includes('youtu.be');
 }
 
 // UMKM-focused categories
@@ -74,6 +101,7 @@ export default function Explore() {
     const [nearbyUMKM, setNearbyUMKM] = useState<ExploreItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [selectedReel, setSelectedReel] = useState<ExploreItem | null>(null);
 
     // Default location (Yogyakarta)
     const [userLocation] = useState({ lat: -7.7956, lng: 110.3695 });
@@ -101,7 +129,7 @@ export default function Explore() {
 
             const data = await response.json();
             const items = (data.data || []).map(transformApiReel);
-            
+
             setExploreItems(items);
             // Sort by distance for nearby section
             const sorted = [...items].sort((a, b) => {
@@ -130,6 +158,41 @@ export default function Explore() {
         <AppLayout>
             <Head title="Jelajahi UMKM - UMKMku" />
 
+            {/* Modal for Reel Playback */}
+            {selectedReel && (
+                <div className="fixed inset-0 z-100 bg-black/95 flex items-center justify-center p-0 md:p-4 backdrop-blur-sm">
+                    <button
+                        onClick={() => setSelectedReel(null)}
+                        className="absolute top-4 right-4 z-50 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+                    >
+                        <X className="h-6 w-6" />
+                    </button>
+
+                    <div className="w-full h-full md:max-w-4xl md:h-[90vh] bg-black rounded-lg overflow-hidden relative shadow-2xl">
+                        <ReelPlayer reel={selectedReel} />
+
+                        {/* Info Overlay */}
+                        <div className="absolute bottom-0 left-0 w-full p-4 bg-linear-to-t from-black via-black/50 to-transparent pointer-events-none">
+                            <div className="pointer-events-auto">
+                                <Link
+                                    href={`/umkm/${selectedReel.umkmId}`}
+                                    className="text-white font-bold text-lg hover:underline block"
+                                >
+                                    @{selectedReel.umkmName}
+                                </Link>
+                                <p className="text-white/90 text-sm mt-1 line-clamp-2">{selectedReel.description || selectedReel.productName}</p>
+                                <Link
+                                    href={`/umkm/${selectedReel.umkmId}`}
+                                    className="inline-block mt-3 px-4 py-2 bg-umkm-orange text-white text-sm font-semibold rounded-full hover:bg-umkm-orange-dark transition-colors"
+                                >
+                                    Kunjungi Toko
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="w-full pb-24 md:pb-8">
                 {/* Search Bar - Sticky on Mobile */}
                 <div className="sticky top-0 z-30 bg-white dark:bg-gray-900 px-3 py-3 md:hidden border-b border-gray-100 dark:border-gray-800">
@@ -147,6 +210,7 @@ export default function Explore() {
 
                 <div className="px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6 max-w-7xl mx-auto">
                     {/* Page Header */}
+                    {/* ... Same as before ... */}
                     <div className="hidden sm:block mb-4 md:mb-6">
                         <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-1">
                             Jelajahi <span className="text-umkm-orange">UMKM</span>
@@ -156,7 +220,7 @@ export default function Explore() {
                         </p>
                     </div>
 
-                    {/* Loading State */}
+                    {/* Loading/Error states ... */}
                     {isLoading && (
                         <div className="flex items-center justify-center py-20">
                             <div className="flex flex-col items-center gap-4">
@@ -166,16 +230,10 @@ export default function Explore() {
                         </div>
                     )}
 
-                    {/* Error State */}
                     {error && !isLoading && (
                         <div className="flex flex-col items-center justify-center py-20 text-center">
                             <p className="text-gray-500 dark:text-gray-400 mb-4">{error}</p>
-                            <button
-                                onClick={fetchReels}
-                                className="px-4 py-2 bg-umkm-orange text-white rounded-lg hover:bg-umkm-orange-dark"
-                            >
-                                Coba Lagi
-                            </button>
+                            <button onClick={fetchReels} className="px-4 py-2 bg-umkm-orange text-white rounded-lg">Coba Lagi</button>
                         </div>
                     )}
 
@@ -187,22 +245,15 @@ export default function Explore() {
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2">
                                             <MapPin className="h-4 w-4 md:h-5 md:w-5 text-umkm-green" />
-                                            <h2 className="text-base md:text-lg font-bold text-gray-900 dark:text-white">
-                                                UMKM Terdekat
-                                            </h2>
+                                            <h2 className="text-base md:text-lg font-bold text-gray-900 dark:text-white">UMKM Terdekat</h2>
                                         </div>
-                                        <Link href="/nearby" className="flex items-center gap-1 text-xs md:text-sm font-semibold text-umkm-orange hover:text-umkm-orange-dark">
-                                            Lihat Semua
-                                            <ChevronRight className="h-4 w-4" />
-                                        </Link>
                                     </div>
-                                    
                                     <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 md:grid md:grid-cols-3 lg:grid-cols-6 md:gap-3">
                                         {nearbyUMKM.map((item) => (
-                                            <Link
+                                            <div
                                                 key={item.id}
-                                                href={`/umkm/${item.umkmId}`}
-                                                className="group relative flex-shrink-0 w-28 sm:w-32 md:w-auto aspect-square overflow-hidden rounded-xl bg-gray-900 cursor-pointer shadow-md hover:shadow-xl transition-all active:scale-95 md:hover:scale-105"
+                                                onClick={() => setSelectedReel(item)}
+                                                className="group relative shrink-0 w-28 sm:w-32 md:w-auto aspect-square overflow-hidden rounded-xl bg-gray-900 cursor-pointer shadow-md hover:shadow-xl transition-all active:scale-95 md:hover:scale-105"
                                             >
                                                 <img
                                                     src={item.thumbnail}
@@ -210,22 +261,14 @@ export default function Explore() {
                                                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110 opacity-90"
                                                     loading="lazy"
                                                 />
-                                                <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/70" />
-                                                {item.distance && (
-                                                    <div className="absolute top-1.5 right-1.5 md:top-2 md:right-2">
-                                                        <div className="flex items-center gap-0.5 px-1.5 py-0.5 md:px-2 md:py-1 rounded-full bg-umkm-green text-white text-[9px] md:text-[10px] font-bold">
-                                                            <MapPin className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                                                            {item.distance}
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                <div className="absolute inset-0 bg-linear-to-b from-black/20 to-black/70" />
                                                 <div className="absolute bottom-0 left-0 w-full p-1.5 md:p-2 text-white">
                                                     <h3 className="font-bold text-[10px] md:text-xs mb-0.5 drop-shadow-md line-clamp-1">
                                                         {item.umkmName}
                                                     </h3>
                                                     <p className="text-[9px] md:text-[10px] opacity-80 line-clamp-1">{item.category}</p>
                                                 </div>
-                                            </Link>
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
@@ -252,20 +295,13 @@ export default function Explore() {
                                 </div>
                             </div>
 
-                            {/* Results Count */}
-                            <div className="flex items-center justify-between mb-3 md:mb-4">
-                                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                                    Menampilkan <span className="font-semibold text-gray-900 dark:text-white">{filteredItems.length}</span> UMKM
-                                </p>
-                            </div>
-
                             {/* Grid Layout */}
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
                                 {filteredItems.map((item) => (
-                                    <Link
+                                    <div
                                         key={item.id}
-                                        href={`/umkm/${item.umkmId}`}
-                                        className="group relative aspect-[3/4] overflow-hidden rounded-lg sm:rounded-xl bg-gray-900 cursor-pointer shadow-md hover:shadow-xl transition-shadow active:scale-[0.98]"
+                                        onClick={() => setSelectedReel(item)}
+                                        className="group relative aspect-3/4 overflow-hidden rounded-lg sm:rounded-xl bg-gray-900 cursor-pointer shadow-md hover:shadow-xl transition-shadow active:scale-[0.98]"
                                     >
                                         <img
                                             src={item.thumbnail}
@@ -273,7 +309,7 @@ export default function Explore() {
                                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 group-hover:opacity-100"
                                             loading="lazy"
                                         />
-                                        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/70" />
+                                        <div className="absolute inset-0 bg-linear-to-b from-black/10 via-transparent to-black/70" />
                                         <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2">
                                             <span className="px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full bg-umkm-orange/90 text-white text-[9px] sm:text-[10px] font-semibold backdrop-blur-sm">
                                                 {item.category}
@@ -290,20 +326,15 @@ export default function Explore() {
                                             </h3>
                                             <div className="flex items-center justify-between text-[10px] sm:text-xs opacity-90">
                                                 <div className="flex items-center gap-0.5 sm:gap-1 min-w-0 flex-1">
-                                                    <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
+                                                    <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
                                                     <span className="truncate">{item.distance || item.location}</span>
-                                                </div>
-                                                <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0 ml-2">
-                                                    <Heart className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                                    <span>{item.likes}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                    </Link>
+                                    </div>
                                 ))}
                             </div>
-
-                            {/* Empty State */}
+                            {/* Empty state ... same */}
                             {filteredItems.length === 0 && (
                                 <div className="flex flex-col items-center justify-center py-12 md:py-16 text-center">
                                     <Store className="h-12 w-12 md:h-16 md:w-16 text-gray-300 dark:text-gray-600 mb-3 md:mb-4" />
@@ -320,5 +351,61 @@ export default function Explore() {
                 </div>
             </div>
         </AppLayout>
+    );
+}
+
+function ReelPlayer({ reel }: { reel: ExploreItem }) {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const mediaItems: { type: 'video' | 'image', url: string }[] = [];
+
+    if (reel.videoUrl) mediaItems.push({ type: 'video', url: reel.videoUrl });
+    if (reel.images) reel.images.forEach(img => mediaItems.push({ type: 'image', url: img }));
+    if (mediaItems.length === 0) mediaItems.push({ type: 'image', url: reel.thumbnail });
+
+    const currentItem = mediaItems[currentIndex];
+    const isMulti = mediaItems.length > 1;
+
+    // Auto auto-play if video
+
+    return (
+        <div className="relative w-full h-full bg-black flex items-center justify-center group">
+            {currentItem.type === 'video' ? (
+                isYouTubeUrl(currentItem.url) ? (
+                    <iframe
+                        src={`https://www.youtube.com/embed/${getYouTubeVideoId(currentItem.url)}?autoplay=1&mute=0&loop=1&playlist=${getYouTubeVideoId(currentItem.url)}&controls=0&modestbranding=1&rel=0&showinfo=0`}
+                        className="w-full h-full"
+                        allow="autoplay; encrypted-media"
+                    />
+                ) : (
+                    <video src={currentItem.url} autoPlay controls className="w-full h-full object-contain" />
+                )
+            ) : (
+                <img src={currentItem.url} className="w-full h-full object-contain" />
+            )}
+
+            {/* Navigation */}
+            {isMulti && (
+                <>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setCurrentIndex(prev => prev === 0 ? mediaItems.length - 1 : prev - 1); }}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 z-20"
+                    >
+                        <ArrowLeft className="h-6 w-6" />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setCurrentIndex(prev => (prev + 1) % mediaItems.length); }}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 z-20"
+                    >
+                        <ArrowRight className="h-6 w-6" />
+                    </button>
+                    {/* Dots */}
+                    <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+                        {mediaItems.map((_, idx) => (
+                            <div key={idx} className={cn("h-1.5 rounded-full transition-all", idx === currentIndex ? "w-6 bg-white" : "w-1.5 bg-white/50")} />
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
     );
 }

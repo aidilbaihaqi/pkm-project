@@ -132,7 +132,7 @@ export function DesktopSidebar() {
                         <SidebarItem href="/explore" icon={Compass} label="Jelajahi" active={isActive('/explore')} />
                         <SidebarItem href="/upload" icon={PlusSquare} label="Unggah" active={isActive('/upload')} />
                         <SidebarItem href="/content" icon={Video} label="Konten" active={isActive('/content')} />
-                        <SidebarItem href="/seller/profile" icon={User} label="Profil" active={isActive('/seller/profile')} />
+                        <SidebarItem href="/seller/profile" icon={User} label="Profil UMKM" active={isActive('/seller/profile')} />
                     </>
                 ) : (
                     // Guest Menu

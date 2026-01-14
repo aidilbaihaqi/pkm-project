@@ -74,21 +74,56 @@ export default function EditProfile() {
             setIsLoading(true);
             setError(null);
 
-            const response = await fetch(UmkmController.show.url(), {
+            const response = await fetch('/api/seller/profile', {
                 credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                },
             });
 
+            // Read as text first to handle HTML error responses
+            const text = await response.text();
+            console.log('Profile API response status:', response.status);
+            console.log('Profile API response preview:', text.substring(0, 100));
+
+            // Check for 401 Unauthorized immediately (works for both JSON and HTML)
+            if (response.status === 401) {
+                setError('Silakan login untuk mengakses halaman ini');
+                return;
+            }
+
+            // Check if response is HTML (error/redirect page)
+            if (text.trim().startsWith('<')) {
+                console.error('Server returned HTML instead of JSON');
+
+                // Check for login redirect
+                if (response.status === 302 || text.toLowerCase().includes('login')) {
+                    setError('Silakan login untuk mengakses halaman ini');
+                    return;
+                }
+
+                // If it's a 404 with HTML, treat as new profile
+                if (response.status === 404) {
+                    setIsNewProfile(true);
+                    return;
+                }
+
+                setError('Gagal memuat profil. Silakan coba lagi.');
+                return;
+            }
+
+            // Handle JSON 404 - profile doesn't exist yet
             if (response.status === 404) {
-                // Profile doesn't exist yet - user needs to create one
                 setIsNewProfile(true);
                 return;
             }
 
             if (!response.ok) {
-                throw new Error('Gagal memuat profil');
+                const errorData = JSON.parse(text);
+                throw new Error(errorData.message || 'Gagal memuat profil');
             }
 
-            const data = await response.json();
+            const data = JSON.parse(text);
             if (data.data) {
                 setFormData({
                     id: data.data.id,
@@ -104,6 +139,9 @@ export default function EditProfile() {
                     open_hours: data.data.open_hours || '08:00 - 17:00',
                 });
                 setIsNewProfile(false);
+            } else {
+                // No data means new profile
+                setIsNewProfile(true);
             }
         } catch (err) {
             console.error('Error fetching profile:', err);
@@ -157,6 +195,7 @@ export default function EditProfile() {
                 kategori: formData.kategori,
                 is_open: formData.is_open,
                 open_hours: formData.open_hours,
+                avatar: formData.avatar,
             };
 
             const url = isNewProfile ? UmkmController.store.url() : UmkmController.update.url();
@@ -213,6 +252,7 @@ export default function EditProfile() {
 
     // Error state
     if (error) {
+        const isAuthError = error.toLowerCase().includes('login');
         return (
             <AppLayout>
                 <Head title="Edit Profil Toko" />
@@ -220,9 +260,18 @@ export default function EditProfile() {
                     <div className="flex flex-col items-center gap-4 text-center">
                         <AlertCircle className="h-12 w-12 text-red-500" />
                         <p className="text-gray-500 dark:text-gray-400">{error}</p>
-                        <Button onClick={fetchProfile} className="bg-teal-600 hover:bg-teal-700">
-                            Coba Lagi
-                        </Button>
+                        {isAuthError ? (
+                            <a
+                                href="/login"
+                                className="inline-flex items-center px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg transition-colors"
+                            >
+                                Masuk
+                            </a>
+                        ) : (
+                            <Button onClick={fetchProfile} className="bg-teal-600 hover:bg-teal-700">
+                                Coba Lagi
+                            </Button>
+                        )}
                     </div>
                 </div>
             </AppLayout>
@@ -261,6 +310,47 @@ export default function EditProfile() {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
+                                {/* Avatar Upload */}
+                                <div className="space-y-2">
+                                    <Label>Foto Profil Toko</Label>
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-20 w-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600">
+                                            {formData.avatar ? (
+                                                <img
+                                                    src={formData.avatar}
+                                                    alt="Avatar"
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            ) : (
+                                                <Store className="h-8 w-8 text-gray-400" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1">
+                                            <Input
+                                                id="avatar"
+                                                type="file"
+                                                accept="image/*"
+                                                className="cursor-pointer"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        // Preview image locally
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            handleChange('avatar', reader.result as string);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Format: JPG, PNG, WebP. Maks 2MB.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {errors.avatar && <p className="text-sm text-red-500">{errors.avatar}</p>}
+                                </div>
+
                                 <div className="space-y-2">
                                     <Label htmlFor="nama_toko">Nama Toko / Usaha *</Label>
                                     <Input

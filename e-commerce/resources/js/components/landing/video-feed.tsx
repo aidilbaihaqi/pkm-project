@@ -39,6 +39,7 @@ interface ApiReel {
     price: string | null;
     kategori: string;
     type: 'video' | 'image';
+    images: string[] | null;
     status: string;
     whatsapp_link: string;
     distance_km: number;
@@ -88,10 +89,12 @@ function transformApiReel(apiReel: ApiReel): Reel {
         comments: 0,
         distance: apiReel.distance_km ? `${apiReel.distance_km}km` : undefined,
         videoUrl: apiReel.video_url || undefined,
+        images: apiReel.images || undefined,
         type: apiReel.type,
         orientation: 'portrait',
     };
 }
+
 
 interface VideoFeedProps {
     lat?: number;
@@ -241,21 +244,23 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
     }, [loadMoreReels, hasMore, isLoadingMore]);
 
     // Navigate carousel manually
-    const navigateCarousel = useCallback((reelId: number, direction: 'prev' | 'next', totalImages: number) => {
+    const navigateCarousel = useCallback((reelId: number, direction: 'prev' | 'next', totalItems: number) => {
         setCarouselIndexes((prev) => {
             const currentIndex = prev[reelId] || 0;
             let nextIndex: number;
             if (direction === 'next') {
-                nextIndex = (currentIndex + 1) % totalImages;
+                nextIndex = (currentIndex + 1) % totalItems;
             } else {
-                nextIndex = currentIndex === 0 ? totalImages - 1 : currentIndex - 1;
+                nextIndex = currentIndex === 0 ? totalItems - 1 : currentIndex - 1;
             }
             return { ...prev, [reelId]: nextIndex };
         });
+
+        // Temporarily pause auto-slide if it exists (not implemented yet for mixed content but good practice)
         setIsPaused((prev) => ({ ...prev, [reelId]: true }));
         setTimeout(() => {
             setIsPaused((prev) => ({ ...prev, [reelId]: false }));
-        }, 10000);
+        }, 5000);
     }, []);
 
     const goToSlide = useCallback((reelId: number, index: number) => {
@@ -263,14 +268,14 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
         setIsPaused((prev) => ({ ...prev, [reelId]: true }));
         setTimeout(() => {
             setIsPaused((prev) => ({ ...prev, [reelId]: false }));
-        }, 10000);
+        }, 5000);
     }, []);
 
     const handleTouchStart = (e: React.TouchEvent, reelId: number) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     };
 
-    const handleTouchEnd = (e: React.TouchEvent, reelId: number, totalImages: number) => {
+    const handleTouchEnd = (e: React.TouchEvent, reelId: number, totalItems: number) => {
         if (!touchStartRef.current) return;
         const touchEnd = e.changedTouches[0];
         const deltaX = touchEnd.clientX - touchStartRef.current.x;
@@ -278,9 +283,9 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
 
         if (Math.abs(deltaX) > 50 && deltaY < 100) {
             if (deltaX < 0) {
-                navigateCarousel(reelId, 'next', totalImages);
+                navigateCarousel(reelId, 'next', totalItems);
             } else {
-                navigateCarousel(reelId, 'prev', totalImages);
+                navigateCarousel(reelId, 'prev', totalItems);
             }
             e.stopPropagation();
         }
@@ -298,35 +303,57 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
         }
     };
 
-    // Play/Pause videos based on active index
+    // Play/Pause videos based on active index AND carousel slide
     useEffect(() => {
         // Reset isPaused for all videos when active index changes
         const activeReelId = reels[activeIndex]?.id;
         if (activeReelId !== undefined) {
-            // Reset isPaused: active video starts fresh, inactive videos are paused
-            setIsPaused(prev => {
-                const newState: Record<number, boolean> = {};
-                reels.forEach((reel, idx) => {
-                    newState[reel.id] = idx !== activeIndex; // Pause non-active, unpause active
-                });
-                return newState;
-            });
+            // Logic to handle carousel: video only plays if it is the current slide (index 0 for video-combined)
+            const currentSlide = carouselIndexes[activeReelId] || 0;
+            // Assume if there is a videoUrl, it is always at index 0
+            // If currentSlide is not 0, pause video.
         }
 
         Object.entries(videoRefs.current).forEach(([id, video]) => {
             if (video) {
-                const reelIndex = reels.findIndex((r: Reel) => r.id === Number(id));
-                if (reelIndex === activeIndex) {
+                const reelId = Number(id);
+                const reelIndex = reels.findIndex((r: Reel) => r.id === reelId);
+                const reel = reels[reelIndex];
+                const currentSlide = carouselIndexes[reelId] || 0;
+
+                // Should play if: Is Active Reel AND Is Video Slide (Slide 0 if video exists)
+                const shouldPlay = reelIndex === activeIndex && currentSlide === 0;
+
+                if (shouldPlay) {
                     video.play().catch(() => { });
-                    setIsPlaying(prev => ({ ...prev, [Number(id)]: true }));
+                    setIsPlaying(prev => ({ ...prev, [reelId]: true }));
                 } else {
                     video.pause();
                     video.currentTime = 0;
-                    setIsPlaying(prev => ({ ...prev, [Number(id)]: false }));
+                    setIsPlaying(prev => ({ ...prev, [reelId]: false }));
                 }
             }
         });
-    }, [activeIndex, reels]);
+
+        // Handle YouTube iframes similarly
+        Object.entries(youtubeRefs.current).forEach(([id, iframe]) => {
+            if (iframe && iframe.contentWindow) {
+                const reelId = Number(id);
+                const reelIndex = reels.findIndex((r: Reel) => r.id === reelId);
+                const reel = reels[reelIndex];
+                const currentSlide = carouselIndexes[reelId] || 0;
+                const shouldPlay = reelIndex === activeIndex && currentSlide === 0;
+
+                if (shouldPlay) {
+                    // Auto-play via src param handles initial load, but for updates we use postMessage
+                    iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo' }), '*');
+                } else {
+                    iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo' }), '*');
+                }
+            }
+        });
+
+    }, [activeIndex, reels, carouselIndexes]);
 
     // Update mute state for all videos
     useEffect(() => {
@@ -586,12 +613,19 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
         }
     };
 
-    // Auto-slide carousel for image galleries
+    // Auto-slide carousel for image-only galleries or if currently on image slide?
+    // For now, let's keep it manual for mixed content or auto depending on user prefs.
     useEffect(() => {
         const intervals: NodeJS.Timeout[] = [];
 
         reels.forEach((reel: Reel) => {
-            if (reel.type === 'image' && reel.images && reel.images.length > 1) {
+            // Logic: If on an image slide, auto-advance? 
+            // Maybe complicated for Video+Image mixed. Let's strictly use manual for mixed, auto for image-only.
+            const currentSlide = carouselIndexes[reel.id] || 0;
+            const isVideoContent = reel.videoUrl;
+
+            // Auto-slide ONLY if it's an image-only reel
+            if (!isVideoContent && reel.images && reel.images.length > 1) {
                 const interval = setInterval(() => {
                     if (isPaused[reel.id]) return;
                     setCarouselIndexes((prev) => {
@@ -605,7 +639,7 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
         });
 
         return () => intervals.forEach(clearInterval);
-    }, [isPaused, reels]);
+    }, [isPaused, reels, carouselIndexes]);
 
     // Loading state
     if (isLoading) {
@@ -695,158 +729,182 @@ export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoF
                                         "relative w-full overflow-hidden",
                                         reel.orientation === 'landscape' ? "h-full" : "h-full"
                                     )}>
-                                        {reel.type === 'video' && reel.videoUrl ? (
-                                            // Check if it's a YouTube URL
-                                            isYouTubeUrl(reel.videoUrl) ? (
-                                                <div
-                                                    className="relative h-full w-full flex items-center justify-center bg-black overflow-hidden cursor-pointer"
-                                                    onClick={() => {
-                                                        handleVideoTap(reel.id);
-                                                        handleShowControls(reel.id);
-                                                    }}
-                                                    onMouseMove={() => handleShowControls(reel.id)}
-                                                >
-                                                    {/* Scale up iframe to hide YouTube branding */}
-                                                    <div className="absolute inset-0 flex items-center justify-center" style={{ transform: 'scale(1.2)' }}>
-                                                        <iframe
-                                                            ref={(el) => { youtubeRefs.current[reel.id] = el; }}
-                                                            src={`https://www.youtube.com/embed/${getYouTubeVideoId(reel.videoUrl)}?autoplay=${index === activeIndex ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&playlist=${getYouTubeVideoId(reel.videoUrl)}&controls=0&modestbranding=1&rel=0&showinfo=0&playsinline=1&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1`}
-                                                            className="w-full h-full"
-                                                            style={{ border: 'none', pointerEvents: 'none' }}
-                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                        />
-                                                    </div>
-                                                    {/* Play/Pause Indicator - only show when explicitly paused */}
-                                                    {isPaused[reel.id] && (
-                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                                                            <div className="p-4 rounded-full bg-black/40 backdrop-blur-sm">
-                                                                <Play className="h-10 w-10 text-white fill-white ml-1" />
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {showHeartAnimation === reel.id && (
-                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
-                                                            <Heart className="h-24 w-24 text-red-500 fill-red-500 animate-ping" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                // Regular video file
-                                                <div
-                                                    className="relative h-full w-full flex items-center justify-center bg-black"
-                                                    onClick={() => {
-                                                        handleVideoTap(reel.id);
-                                                        handleShowControls(reel.id);
-                                                    }}
-                                                    onMouseMove={() => handleShowControls(reel.id)}
-                                                >
-                                                    <video
-                                                        ref={(el) => { videoRefs.current[reel.id] = el; }}
-                                                        src={reel.videoUrl}
-                                                        autoPlay
-                                                        loop
-                                                        muted={isMuted}
-                                                        playsInline
+                                        {(() => {
+                                            // Construct Media Items for this Reel
+                                            const mediaItems: { type: 'video' | 'image', url: string }[] = [];
+                                            if (reel.videoUrl) mediaItems.push({ type: 'video', url: reel.videoUrl });
+                                            if (reel.images && reel.images.length > 0) {
+                                                reel.images.forEach(img => mediaItems.push({ type: 'image', url: img }));
+                                            }
+                                            // Fallback if empty (shouldn't happen with valid data)
+                                            if (mediaItems.length === 0) mediaItems.push({ type: 'image', url: reel.thumbnail });
+
+                                            return mediaItems.map((item, idx) => {
+                                                const isActiveSlide = idx === currentCarouselIndex;
+
+                                                return (
+                                                    <div
+                                                        key={`${reel.id}-${idx}`}
                                                         className={cn(
-                                                            "h-full w-full object-center",
-                                                            reel.orientation === 'landscape'
-                                                                ? "object-contain bg-black"
-                                                                : "object-cover"
+                                                            "absolute inset-0 w-full h-full transition-all duration-300 ease-in-out bg-black",
+                                                            isActiveSlide ? "opacity-100 z-10 translate-x-0" : "opacity-0 z-0 translate-x-full"
                                                         )}
-                                                        onTimeUpdate={() => handleTimeUpdate(reel.id)}
-                                                        onPlay={() => handleVideoPlay(reel.id)}
-                                                        onPause={() => handleVideoPause(reel.id)}
-                                                    />
-                                                    <div className={cn(
-                                                        "absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none",
-                                                        showControls[reel.id] || !isPlaying[reel.id] ? "opacity-100" : "opacity-0"
-                                                    )}>
-                                                        <div className="p-4 rounded-full bg-black/40 backdrop-blur-sm">
-                                                            {isPlaying[reel.id] ? (
-                                                                <Pause className="h-10 w-10 text-white" />
+                                                        style={{
+                                                            transform: isActiveSlide ? 'translateX(0)' : idx < currentCarouselIndex ? 'translateX(-100%)' : 'translateX(100%)',
+                                                            pointerEvents: isActiveSlide ? 'auto' : 'none'
+                                                        }}
+                                                    >
+                                                        {item.type === 'video' ? (
+                                                            // Video Slide Logic (Moved from previous block)
+                                                            isYouTubeUrl(item.url) ? (
+                                                                <div
+                                                                    className="relative h-full w-full flex items-center justify-center bg-black overflow-hidden cursor-pointer"
+                                                                    onClick={() => {
+                                                                        handleVideoTap(reel.id);
+                                                                        handleShowControls(reel.id);
+                                                                    }}
+                                                                    onMouseMove={() => handleShowControls(reel.id)}
+                                                                >
+                                                                    {/* Scale up iframe to hide YouTube branding */}
+                                                                    <div className="absolute inset-0 flex items-center justify-center" style={{ transform: 'scale(1.2)' }}>
+                                                                        <iframe
+                                                                            ref={(el) => { youtubeRefs.current[reel.id] = el; }}
+                                                                            src={`https://www.youtube.com/embed/${getYouTubeVideoId(item.url)}?autoplay=0&mute=${isMuted ? 1 : 0}&loop=1&playlist=${getYouTubeVideoId(item.url)}&controls=0&modestbranding=1&rel=0&showinfo=0&playsinline=1&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1`}
+                                                                            className="w-full h-full"
+                                                                            style={{ border: 'none', pointerEvents: 'none' }}
+                                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                        />
+                                                                    </div>
+                                                                    {/* Play/Pause Indicator */}
+                                                                    {isPaused[reel.id] && (
+                                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                                                                            <div className="p-4 rounded-full bg-black/40 backdrop-blur-sm">
+                                                                                <Play className="h-10 w-10 text-white fill-white ml-1" />
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             ) : (
-                                                                <Play className="h-10 w-10 text-white fill-white ml-1" />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    {showHeartAnimation === reel.id && (
-                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
-                                                            <Heart className="h-24 w-24 text-red-500 fill-red-500 animate-ping" />
-                                                        </div>
-                                                    )}
-                                                    {/* Progress Bar */}
-                                                    <div className="absolute bottom-0 left-0 right-0 z-30 px-3 pb-3 pt-8 bg-gradient-to-t from-black/60 to-transparent">
-                                                        <div className="flex items-center gap-2 text-white text-xs">
-                                                            <span className="tabular-nums min-w-[32px]">
-                                                                {formatTime(videoCurrentTime[reel.id] || 0)}
-                                                            </span>
-                                                            <div
-                                                                className="relative flex-1 h-1 bg-white/30 rounded-full cursor-pointer group"
-                                                                onMouseDown={(e) => handleProgressMouseDown(e, reel.id)}
-                                                                onTouchStart={(e) => handleProgressTouchStart(e, reel.id)}
-                                                                onTouchMove={(e) => handleProgressTouchMove(e, reel.id)}
-                                                                onTouchEnd={(e) => handleProgressTouchEnd(e, reel.id)}
-                                                            >
                                                                 <div
-                                                                    className="absolute top-0 left-0 h-full bg-white rounded-full transition-all"
-                                                                    style={{ width: `${videoProgress[reel.id] || 0}%` }}
-                                                                />
-                                                                <div
-                                                                    className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                    style={{ left: `calc(${videoProgress[reel.id] || 0}% - 6px)` }}
-                                                                />
-                                                            </div>
-                                                            <span className="tabular-nums min-w-[32px]">
-                                                                {formatTime(videoDuration[reel.id] || 0)}
-                                                            </span>
-                                                        </div>
+                                                                    className="relative h-full w-full flex items-center justify-center bg-black"
+                                                                    onClick={() => {
+                                                                        handleVideoTap(reel.id);
+                                                                        handleShowControls(reel.id);
+                                                                    }}
+                                                                    onMouseMove={() => handleShowControls(reel.id)}
+                                                                >
+                                                                    <video
+                                                                        ref={(el) => { videoRefs.current[reel.id] = el; }}
+                                                                        src={item.url}
+                                                                        loop
+                                                                        muted={isMuted}
+                                                                        playsInline
+                                                                        className={cn(
+                                                                            "h-full w-full object-center",
+                                                                            reel.orientation === 'landscape'
+                                                                                ? "object-contain bg-black"
+                                                                                : "object-cover"
+                                                                        )}
+                                                                        onTimeUpdate={() => handleTimeUpdate(reel.id)}
+                                                                        onPlay={() => handleVideoPlay(reel.id)}
+                                                                        onPause={() => handleVideoPause(reel.id)}
+                                                                    />
+                                                                    <div className={cn(
+                                                                        "absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none",
+                                                                        showControls[reel.id] || !isPlaying[reel.id] ? "opacity-100" : "opacity-0"
+                                                                    )}>
+                                                                        <div className="p-4 rounded-full bg-black/40 backdrop-blur-sm">
+                                                                            {isPlaying[reel.id] ? (
+                                                                                <Pause className="h-10 w-10 text-white" />
+                                                                            ) : (
+                                                                                <Play className="h-10 w-10 text-white fill-white ml-1" />
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    {/* Progress Bar */}
+                                                                    <div className="absolute bottom-0 left-0 right-0 z-30 px-3 pb-3 pt-8 bg-gradient-to-t from-black/60 to-transparent">
+                                                                        <div className="flex items-center gap-2 text-white text-xs">
+                                                                            <span className="tabular-nums min-w-[32px]">
+                                                                                {formatTime(videoCurrentTime[reel.id] || 0)}
+                                                                            </span>
+                                                                            <div
+                                                                                className="relative flex-1 h-1 bg-white/30 rounded-full cursor-pointer group"
+                                                                                onMouseDown={(e) => handleProgressMouseDown(e, reel.id)}
+                                                                                onTouchStart={(e) => handleProgressTouchStart(e, reel.id)}
+                                                                                onTouchMove={(e) => handleProgressTouchMove(e, reel.id)}
+                                                                                onTouchEnd={(e) => handleProgressTouchEnd(e, reel.id)}
+                                                                            >
+                                                                                <div
+                                                                                    className="absolute top-0 left-0 h-full bg-white rounded-full transition-all"
+                                                                                    style={{ width: `${videoProgress[reel.id] || 0}%` }}
+                                                                                />
+                                                                            </div>
+                                                                            <span className="tabular-nums min-w-[32px]">
+                                                                                {formatTime(videoDuration[reel.id] || 0)}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        ) : (
+                                                            // Image Slide Logic
+                                                            <img
+                                                                src={item.url}
+                                                                alt={`${reel.product} ${idx + 1}`}
+                                                                className="h-full w-full object-cover object-center"
+                                                            />
+                                                        )}
                                                     </div>
-                                                </div>
-                                            )
-                                        ) : isImageGallery && reel.images ? (
-                                            reel.images.map((img, idx) => (
-                                                <img
-                                                    key={idx}
-                                                    src={img}
-                                                    alt={`${reel.product} ${idx + 1}`}
-                                                    className={cn(
-                                                        "absolute inset-0 h-full w-full object-cover object-center opacity-90 transition-all duration-500 ease-in-out",
-                                                        idx === currentCarouselIndex
-                                                            ? "translate-x-0 opacity-90"
-                                                            : idx < currentCarouselIndex
-                                                                ? "-translate-x-full opacity-0"
-                                                                : "translate-x-full opacity-0"
-                                                    )}
-                                                />
-                                            ))
-                                        ) : (
-                                            <img
-                                                src={displayImage}
-                                                alt={reel.product}
-                                                className="h-full w-full object-cover object-center opacity-90"
-                                            />
-                                        )}
+                                                );
+                                            });
+                                        })()}
                                     </div>
 
-                                    {isImageGallery && reel.images!.length > 1 && (
-                                        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-                                            {reel.images!.map((_, idx) => (
-                                                <button
-                                                    key={idx}
+                                    {/* Carousel Indicators & Navigation */}
+                                    {(() => {
+                                        const mediaCount = (reel.videoUrl ? 1 : 0) + (reel.images ? reel.images.length : 0);
+                                        if (mediaCount <= 1) return null;
+
+                                        return (
+                                            <>
+                                                {/* Dots */}
+                                                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                                                    {Array.from({ length: mediaCount }).map((_, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                goToSlide(reel.id, idx);
+                                                            }}
+                                                            className={cn(
+                                                                "h-1.5 rounded-full transition-all duration-300 cursor-pointer hover:opacity-100 shadow-sm",
+                                                                idx === currentCarouselIndex
+                                                                    ? "w-8 bg-white"
+                                                                    : "w-2 bg-white/50 hover:bg-white/70"
+                                                            )}
+                                                        />
+                                                    ))}
+                                                </div>
+
+                                                {/* Navigation Areas (Invisible but clickable) */}
+                                                <div
+                                                    className="absolute inset-y-0 left-0 w-1/4 z-10"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        goToSlide(reel.id, idx);
+                                                        navigateCarousel(reel.id, 'prev', mediaCount);
                                                     }}
-                                                    className={cn(
-                                                        "h-1.5 rounded-full transition-all duration-300 cursor-pointer hover:opacity-100",
-                                                        idx === currentCarouselIndex
-                                                            ? "w-8 bg-white"
-                                                            : "w-2 bg-white/50 hover:bg-white/70"
-                                                    )}
                                                 />
-                                            ))}
-                                        </div>
-                                    )}
+                                                <div
+                                                    className="absolute inset-y-0 right-0 w-1/4 z-10"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigateCarousel(reel.id, 'next', mediaCount);
+                                                    }}
+                                                />
+                                            </>
+                                        );
+                                    })()}
+
 
                                     {showHeartAnimation === reel.id && (
                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">

@@ -14,7 +14,7 @@ import { Form, Head, usePage } from '@inertiajs/react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Profile settings',
+        title: 'Pengaturan Akun',
         href: edit().url,
     },
 ];
@@ -24,11 +24,11 @@ export default function Profile() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Profile settings" />
+            <Head title="Pengaturan Akun" />
 
             <SettingsLayout>
                 <div className="space-y-6">
-                    <HeadingSmall title="Profile information" description="Update your name and email address" />
+                    <HeadingSmall title="Informasi Profil" description="Perbarui nama dan alamat email Anda" />
 
                     <Form
                         {...update.form()}
@@ -40,29 +40,29 @@ export default function Profile() {
                         {({ processing, recentlySuccessful, errors }) => (
                             <>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="name">Name</Label>
+                                    <Label htmlFor="name">Nama</Label>
 
                                     <Input
                                         id="name"
                                         className="mt-1 block w-full"
-                                        defaultValue={auth.user.name}
+                                        defaultValue={auth.user?.name || ''}
                                         name="name"
                                         required
                                         autoComplete="name"
-                                        placeholder="Full name"
+                                        placeholder="Nama lengkap"
                                     />
 
                                     <InputError className="mt-2" message={errors.name} />
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="email">Email address</Label>
+                                    <Label htmlFor="email">Alamat Email</Label>
 
                                     <Input
                                         id="email"
                                         type="email"
                                         className="mt-1 block w-full"
-                                        defaultValue={auth.user.email}
+                                        defaultValue={auth.user?.email || ''}
                                         name="email"
                                         required
                                         autoComplete="username"
@@ -73,7 +73,7 @@ export default function Profile() {
                                 </div>
 
                                 <div className="flex items-center gap-4">
-                                    <Button disabled={processing}>Save</Button>
+                                    <Button disabled={processing}>Simpan</Button>
 
                                     <Transition
                                         show={recentlySuccessful}
@@ -82,7 +82,7 @@ export default function Profile() {
                                         leave="transition ease-in-out"
                                         leaveTo="opacity-0"
                                     >
-                                        <p className="text-sm text-neutral-600">Saved</p>
+                                        <p className="text-sm text-neutral-600">Tersimpan</p>
                                     </Transition>
                                 </div>
                             </>

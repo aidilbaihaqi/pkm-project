@@ -21,6 +21,7 @@ class Reel extends Model
         'umkm_profile_id',
         'video_url',
         'thumbnail_url',
+        'images',
         'product_name',
         'caption',
         'price',
@@ -45,6 +46,7 @@ class Reel extends Model
     {
         return [
             'price' => 'decimal:2',
+            'images' => 'array',
         ];
     }
 

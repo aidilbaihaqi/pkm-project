@@ -25,7 +25,8 @@ Route::get('/reels/{id}', [ReelsController::class, 'show']);
 Route::post('/reels/{reelId}/events', [EngagementController::class, 'recordEvent']);
 
 // Authenticated routes (Seller & Admin only - user biasa tidak perlu login)
-Route::middleware('auth:sanctum')->group(function () {
+// Using auth:web to share session with WorkOS Google login
+Route::middleware('auth:web')->group(function () {
     // Auth
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);

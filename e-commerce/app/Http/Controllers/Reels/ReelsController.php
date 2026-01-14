@@ -11,6 +11,10 @@ use App\Services\LocationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
 class ReelsController extends Controller
 {
     public function __construct(
@@ -50,20 +54,47 @@ class ReelsController extends Controller
                 return $reel;
             });
         } else {
-            // Standard location-based feed
+            // Standard location-based feed or global fallback
             $lat = (float) $request->input('lat');
             $lng = (float) $request->input('lng');
             $radius = $request->getRadius();
             $perPage = $request->getPerPage();
             $page = $request->getPage();
     
-            $result = $this->locationService->getReelsWithinRadius(
-                $lat,
-                $lng,
-                $radius,
-                $perPage,
-                $page
-            );
+            // If coordinates are missing (0,0), return global feed sorted by latest
+            if ($lat == 0 && $lng == 0) {
+                $reels = Reel::with('umkmProfile')
+                    ->whereHas('umkmProfile', function($q) {
+                        $q->where('is_blocked', false);
+                    })
+                    ->where('status', 'published')
+                    ->latest()
+                    ->paginate($perPage, ['*'], 'page', $page);
+
+                $result = [
+                    'data' => collect($reels->items()),
+                    'meta' => [
+                        'current_page' => $reels->currentPage(),
+                        'last_page' => $reels->lastPage(),
+                        'per_page' => $reels->perPage(),
+                        'total' => $reels->total(),
+                    ],
+                ];
+
+                // Set distance to 0 for global feed
+                $result['data']->transform(function ($reel) {
+                    $reel->distance = 0;
+                    return $reel;
+                });
+            } else {
+                $result = $this->locationService->getReelsWithinRadius(
+                    $lat,
+                    $lng,
+                    $radius,
+                    $perPage,
+                    $page
+                );
+            }
         }
 
         // Transform data to include distance in response
@@ -77,6 +108,7 @@ class ReelsController extends Controller
                 'price' => $reel->price,
                 'kategori' => $reel->kategori,
                 'type' => $reel->type,
+                'images' => $reel->images,
                 'status' => $reel->status,
                 'whatsapp_link' => $reel->whatsapp_link,
                 'views_count' => $reel->views_count,
@@ -95,10 +127,52 @@ class ReelsController extends Controller
         });
 
         if ($data->isEmpty()) {
+            // Fallback: If no reels in radius, return global feed
+            $reels = Reel::with('umkmProfile')
+                ->whereHas('umkmProfile', function($q) {
+                    $q->where('is_blocked', false);
+                })
+                ->where('status', 'published')
+                ->latest()
+                ->paginate($request->getPerPage(), ['*'], 'page', $request->getPage());
+
+            $globalData = collect($reels->items())->map(function ($reel) {
+                 return [
+                    'id' => $reel->id,
+                    'video_url' => $reel->video_url,
+                    'thumbnail_url' => $reel->thumbnail_url,
+                    'product_name' => $reel->product_name,
+                    'caption' => $reel->caption,
+                    'price' => $reel->price,
+                    'kategori' => $reel->kategori,
+                    'type' => $reel->type,
+                    'images' => $reel->images,
+                    'status' => $reel->status,
+                    'whatsapp_link' => $reel->whatsapp_link,
+                    'views_count' => $reel->views_count,
+                    'distance_km' => 0,
+                    'distance' => 0,
+                    'created_at' => $reel->created_at,
+                    'umkm_profile_id' => $reel->umkm_profile_id,
+                    'umkm_profile' => [
+                        'id' => $reel->umkmProfile->id,
+                        'nama_toko' => $reel->umkmProfile->nama_toko,
+                        'kategori' => $reel->umkmProfile->kategori,
+                        'avatar' => $reel->umkmProfile->avatar,
+                        'is_open' => $reel->umkmProfile->is_open,
+                    ],
+                ];
+            });
+
             return response()->json([
-                'message' => 'Tidak ada konten UMKM dalam radius yang ditentukan',
-                'data' => [],
-                'meta' => $result['meta'],
+                'message' => 'Menampilkan konten terbaru (di luar radius)',
+                'data' => $globalData,
+                'meta' => [
+                    'current_page' => $reels->currentPage(),
+                    'last_page' => $reels->lastPage(),
+                    'per_page' => $reels->perPage(),
+                    'total' => $reels->total(),
+                ],
             ]);
         }
 
@@ -139,6 +213,7 @@ class ReelsController extends Controller
                 'price' => $reel->price,
                 'kategori' => $reel->kategori,
                 'type' => $reel->type,
+                'images' => $reel->images,
                 'status' => $reel->status,
                 'whatsapp_link' => $reel->whatsapp_link,
                 'created_at' => $reel->created_at,
@@ -168,9 +243,24 @@ class ReelsController extends Controller
         $user = $request->user();
         $profile = $user->umkmProfile;
 
+        $data = $request->validated();
+
+        // Handle images array
+        if (isset($data['images']) && is_array($data['images'])) {
+            $processedImages = [];
+            foreach ($data['images'] as $image) {
+                if (!empty($image) && str_starts_with($image, 'data:image')) {
+                    $processedImages[] = $this->saveBase64Image($image, 'reels');
+                } else {
+                    $processedImages[] = $image;
+                }
+            }
+            $data['images'] = $processedImages;
+        }
+
         $reel = Reel::create([
             'umkm_profile_id' => $profile->id,
-            ...$request->validated(),
+            ...$data,
         ]);
 
         return response()->json([
@@ -187,7 +277,22 @@ class ReelsController extends Controller
     {
         $reelModel = Reel::findOrFail($reel);
         
-        $reelModel->update($request->validated());
+        $data = $request->validated();
+
+        // Handle images array
+        if (isset($data['images']) && is_array($data['images'])) {
+            $processedImages = [];
+            foreach ($data['images'] as $image) {
+                if (!empty($image) && str_starts_with($image, 'data:image')) {
+                    $processedImages[] = $this->saveBase64Image($image, 'reels');
+                } else {
+                    $processedImages[] = $image;
+                }
+            }
+            $data['images'] = $processedImages;
+        }
+        
+        $reelModel->update($data);
 
         return response()->json([
             'message' => 'Reel updated successfully',
@@ -247,5 +352,27 @@ class ReelsController extends Controller
                 'total' => $reels->total(),
             ],
         ]);
+    }
+
+    /**
+     * Save base64 image to storage and return the public path.
+     */
+    private function saveBase64Image(string $base64Image, string $folder): string
+    {
+        // Extract the image data
+        preg_match('/^data:image\/(\w+);base64,/', $base64Image, $matches);
+        $extension = $matches[1] ?? 'png';
+        
+        // Remove the data:image/xxx;base64, part
+        $imageData = preg_replace('/^data:image\/\w+;base64,/', '', $base64Image);
+        $imageData = base64_decode($imageData);
+        
+        // Generate unique filename
+        $filename = $folder . '/' . Str::uuid() . '.' . $extension;
+        
+        // Store the image
+        Storage::disk('public')->put($filename, $imageData);
+        
+        return '/storage/' . $filename;
     }
 }

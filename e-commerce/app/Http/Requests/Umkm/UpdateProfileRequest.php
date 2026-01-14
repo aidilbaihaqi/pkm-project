@@ -35,7 +35,7 @@ class UpdateProfileRequest extends FormRequest
             'longitude' => ['sometimes', 'required', 'numeric', 'between:-180,180'],
             'kategori' => ['sometimes', 'required', 'string', 'max:50'],
             'deskripsi' => ['nullable', 'string'],
-            'avatar' => ['nullable', 'string', 'max:255'],
+            'avatar' => ['nullable', 'string'],
             'is_open' => ['nullable', 'boolean'],
             'open_hours' => ['nullable', 'string', 'max:50'],
         ];
