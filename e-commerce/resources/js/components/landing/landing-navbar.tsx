@@ -55,7 +55,7 @@ export function AppNavbar() {
                         <Button asChild size="sm" className="h-8 bg-umkm-orange px-3 text-xs hover:bg-umkm-orange-dark sm:h-9 sm:px-4 sm:text-sm">
                             <Link href="/dashboard">
                                 <User className="mr-1 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />
-                                <span className="hidden sm:inline">Dashboard</span>
+                                <span className="hidden sm:inline">Dasbor</span>
                             </Link>
                         </Button>
                     ) : (

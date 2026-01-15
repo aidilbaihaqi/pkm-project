@@ -1,87 +1,333 @@
 import { Link } from '@inertiajs/react';
-import { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, Heart, Share2, Volume2, VolumeX, Search } from 'lucide-react';
+import { ArrowUp, ArrowDown, Heart, Share2, Volume2, VolumeX, Search, Play, Pause, ChevronLeft, Loader2 } from 'lucide-react';
+import ReelsController from '@/actions/App/Http/Controllers/Reels/ReelsController';
+import EngagementController from '@/actions/App/Http/Controllers/Engagement/EngagementController';
+import axios from 'axios';
 
-// Reuse Reel type
+// Helper function to extract YouTube video ID from URL
+function getYouTubeVideoId(url: string): string | null {
+    if (!url) return null;
+
+    // Match various YouTube URL formats
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    ];
+
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+
+    return null;
+}
+
+// Check if URL is a YouTube URL
+function isYouTubeUrl(url: string): boolean {
+    return url?.includes('youtube.com') || url?.includes('youtu.be');
+}
+
+// API Reel type matching backend response
+interface ApiReel {
+    id: number;
+    video_url: string | null;
+    thumbnail_url: string | null;
+    product_name: string;
+    caption: string | null;
+    price: string | null;
+    kategori: string;
+    type: 'video' | 'image';
+    images: string[] | null;
+    status: string;
+    whatsapp_link: string;
+    views_count?: number;
+    likes_count?: number;
+    is_liked?: boolean;
+    distance_km: number;
+    created_at: string;
+    umkm_profile: {
+        id: number;
+        nama_toko: string;
+        kategori: string;
+        avatar: string | null;
+        is_open: boolean;
+    };
+}
+
+// Internal Reel type for component
 interface Reel {
     id: number;
     thumbnail: string;
     umkmName: string;
-    umkmId?: number;
+    umkmId: number;
     product: string;
     description?: string;
     whatsapp: string;
+    whatsappLink: string;
     views: number;
     likes: number;
+    isLiked?: boolean;
     comments: number;
     distance?: string;
-    images?: string[]; // For carousel/gallery
-    type?: 'video' | 'image'; // Content type
+    images?: string[];
+    videoUrl?: string;
+    type: 'video' | 'image';
+    orientation?: 'portrait' | 'landscape';
 }
 
-// Sample Data (Need to be consistent with ReelsGrid)
-const sampleReels: Reel[] = [
-    {
-        id: 1,
-        thumbnail: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=600&fit=crop',
-        umkmName: 'Warung Gudeg Bu Tini',
-        umkmId: 1,
-        product: 'Nasi Gudeg Spesial',
-        description: 'Menikmati Nasi Gudeg Spesial yang lezat dan otentik. #kuliner #umkm #warung',
-        distance: '500m',
-        whatsapp: '6281234567890',
-        views: 1250,
-        likes: 234,
-        comments: 42,
-        type: 'video',
-    },
-    {
-        id: 2,
-        thumbnail: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=600&fit=crop',
-        umkmName: 'Kedai Kopi Pak Joko',
-        umkmId: 2,
-        product: 'Kopi Susu Gula Aren',
-        description: 'Kopi Susu Gula Aren khas kami, dibuat dengan biji kopi pilihan.',
-        distance: '800m',
-        whatsapp: '6281234567891',
-        views: 856,
-        likes: 189,
-        comments: 28,
-        type: 'image',
-        images: [
-            'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=600&fit=crop',
-            'https://images.unsplash.com/photo-1511920170033-f8396924c348?w=400&h=600&fit=crop',
-            'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=600&fit=crop',
-        ],
-    },
-    {
-        id: 3,
-        thumbnail: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400&h=600&fit=crop',
-        umkmName: 'Bakso Mas Budi',
-        umkmId: 3,
-        product: 'Bakso Urat Jumbo',
-        whatsapp: '6281234567892',
-        views: 2100,
-        likes: 445,
-        comments: 67,
-        type: 'video',
-    },
-];
+// Transform API response to internal Reel type
+function transformApiReel(apiReel: ApiReel): Reel {
+    return {
+        id: apiReel.id,
+        thumbnail: apiReel.thumbnail_url || `https://img.youtube.com/vi/default/mqdefault.jpg`,
+        umkmName: apiReel.umkm_profile.nama_toko,
+        umkmId: apiReel.umkm_profile.id,
+        product: apiReel.product_name,
+        description: apiReel.caption || undefined,
+        whatsapp: '',
+        whatsappLink: apiReel.whatsapp_link,
+        views: apiReel.views_count || 0,
+        likes: apiReel.likes_count || 0,
+        isLiked: apiReel.is_liked || false,
+        comments: 0,
+        distance: apiReel.distance_km ? `${apiReel.distance_km}km` : undefined,
+        videoUrl: apiReel.video_url || undefined,
+        images: apiReel.images || undefined,
+        type: apiReel.type,
+        orientation: 'portrait',
+    };
+}
 
 
-export function VideoFeed() {
+interface VideoFeedProps {
+    lat?: number;
+    lng?: number;
+    radius?: number;
+}
+
+export function VideoFeed({ lat = -7.7956, lng = 110.3695, radius = 10 }: VideoFeedProps) {
     const containerRef = useRef<HTMLDivElement>(null);
+    const videoRefs = useRef<Record<number, HTMLVideoElement | null>>({});
+    const youtubeRefs = useRef<Record<number, HTMLIFrameElement | null>>({});
+    const loadMoreRef = useRef<HTMLDivElement>(null);
+
+    // Reels state for infinite scroll
+    const [reels, setReels] = useState<Reel[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+    const [showEndMessage, setShowEndMessage] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [error, setError] = useState<string | null>(null);
+
+    // Fetch reels from API
+    const fetchReels = useCallback(async (page: number, append: boolean = false) => {
+        try {
+            if (append) {
+                setIsLoadingMore(true);
+            } else {
+                setIsLoading(true);
+            }
+            setError(null);
+
+            let data;
+            const queryParams = new URLSearchParams({
+                lat: lat.toString(),
+                lng: lng.toString(),
+                radius: radius.toString(),
+                page: page.toString(),
+                per_page: '10'
+            });
+            const apiUrl = `/api/reels?${queryParams.toString()}`;
+
+            try {
+                // Try authenticated request first
+                const response = await axios.get(apiUrl);
+                data = response.data;
+            } catch (axiosError) {
+                console.warn('Axios fetch failed, falling back to guest fetch', axiosError);
+                // Fallback to fetch (Guest mode) - explicit URL string to avoid Ziggy errors
+                const response = await fetch(apiUrl, { credentials: 'omit' });
+
+                if (!response.ok) throw new Error('Failed to fetch reels (fallback)');
+                data = await response.json();
+            }
+
+            const transformedReels = (data.data || []).map(transformApiReel);
+
+            if (append) {
+                setReels(prev => [...prev, ...transformedReels]);
+            } else {
+                setReels(transformedReels);
+            }
+
+            // Check if there are more pages
+            if (data.meta) {
+                setHasMore(data.meta.current_page < data.meta.last_page);
+            } else {
+                setHasMore(transformedReels.length >= 10);
+            }
+        } catch (err) {
+            console.error('Error fetching reels:', err);
+            setError('Gagal memuat konten. Silakan coba lagi.');
+        } finally {
+            setIsLoading(false);
+            setIsLoadingMore(false);
+        }
+    }, [lat, lng, radius]);
+
+    // Initial fetch
+    useEffect(() => {
+        fetchReels(1);
+    }, [fetchReels]);
+
+    // Handle end of feed message
+    useEffect(() => {
+        if (!hasMore && !isLoading && !isLoadingMore && reels.length > 0) {
+            setShowEndMessage(true);
+            const timer = setTimeout(() => {
+                setShowEndMessage(false);
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [hasMore, isLoading, isLoadingMore, reels.length]);
+
+    // Load more reels
+    const loadMoreReels = useCallback(() => {
+        if (isLoadingMore || !hasMore) return;
+        const nextPage = currentPage + 1;
+        setCurrentPage(nextPage);
+        fetchReels(nextPage, true);
+    }, [isLoadingMore, hasMore, currentPage, fetchReels]);
+
+    // Auto-hide end message and scroll back to last reel
+    useEffect(() => {
+        if (!hasMore && reels.length > 0) {
+            setShowEndMessage(true);
+            const timer = setTimeout(() => {
+                setShowEndMessage(false);
+                if (containerRef.current) {
+                    const height = containerRef.current.clientHeight;
+                    containerRef.current.scrollTo({
+                        top: (reels.length - 1) * height,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [hasMore, reels.length]);
+
     const [likedReels, setLikedReels] = useState<number[]>([]);
+
+    // Initialize likedReels from loaded reels prop
+    useEffect(() => {
+        if (reels.length > 0) {
+            const initialLiked = reels.filter(r => r.isLiked).map(r => r.id);
+            setLikedReels(prev => {
+                const unique = new Set([...prev, ...initialLiked]);
+                return Array.from(unique);
+            });
+        }
+    }, [reels]);
     const [activeIndex, setActiveIndex] = useState(0);
-    const [isMuted, setIsMuted] = useState(true);
+    const [isMuted, setIsMuted] = useState(false); // Default unmuted as requested
     const [expandedReels, setExpandedReels] = useState<number[]>([]);
+    const [viewedReels, setViewedReels] = useState<Set<number>>(new Set());
     const [carouselIndexes, setCarouselIndexes] = useState<Record<number, number>>({});
     const [showHeartAnimation, setShowHeartAnimation] = useState<number | null>(null);
     const lastTapRef = useRef<{ time: number; reelId: number } | null>(null);
+    const [origin, setOrigin] = useState('');
 
-    // Scroll active reel into view
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setOrigin(window.location.origin);
+        }
+    }, []);
+
+    // Video control states
+    const [videoProgress, setVideoProgress] = useState<Record<number, number>>({});
+    const [isPlaying, setIsPlaying] = useState<Record<number, boolean>>({});
+    const [showControls, setShowControls] = useState<Record<number, boolean>>({});
+    const [isPaused, setIsPaused] = useState<Record<number, boolean>>({});
+    const [mobileViewMode, setMobileViewMode] = useState<Record<number, 'portrait' | 'landscape'>>({});
+    const [videoDuration, setVideoDuration] = useState<Record<number, number>>({});
+    const [videoCurrentTime, setVideoCurrentTime] = useState<Record<number, number>>({});
+    const lastProgressUpdateRef = useRef<Record<number, number>>({});
+    const [isDragging, setIsDragging] = useState<Record<number, boolean>>({});
+    const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+    const showControlsTimeout = useRef<Record<number, NodeJS.Timeout>>({});
+
+    // IntersectionObserver for infinite scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+                    loadMoreReels();
+                }
+            },
+            { threshold: 0.5 }
+        );
+
+        if (loadMoreRef.current) {
+            observer.observe(loadMoreRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [loadMoreReels, hasMore, isLoadingMore]);
+
+    // Navigate carousel manually
+    const navigateCarousel = useCallback((reelId: number, direction: 'prev' | 'next', totalItems: number) => {
+        setCarouselIndexes((prev) => {
+            const currentIndex = prev[reelId] || 0;
+            let nextIndex: number;
+            if (direction === 'next') {
+                nextIndex = (currentIndex + 1) % totalItems;
+            } else {
+                nextIndex = currentIndex === 0 ? totalItems - 1 : currentIndex - 1;
+            }
+            return { ...prev, [reelId]: nextIndex };
+        });
+
+        // Temporarily pause auto-slide if it exists (not implemented yet for mixed content but good practice)
+        setIsPaused((prev) => ({ ...prev, [reelId]: true }));
+        setTimeout(() => {
+            setIsPaused((prev) => ({ ...prev, [reelId]: false }));
+        }, 5000);
+    }, []);
+
+    const goToSlide = useCallback((reelId: number, index: number) => {
+        setCarouselIndexes((prev) => ({ ...prev, [reelId]: index }));
+        setIsPaused((prev) => ({ ...prev, [reelId]: true }));
+        setTimeout(() => {
+            setIsPaused((prev) => ({ ...prev, [reelId]: false }));
+        }, 5000);
+    }, []);
+
+    const handleTouchStart = (e: React.TouchEvent, reelId: number) => {
+        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent, reelId: number, totalItems: number) => {
+        if (!touchStartRef.current) return;
+        const touchEnd = e.changedTouches[0];
+        const deltaX = touchEnd.clientX - touchStartRef.current.x;
+        const deltaY = Math.abs(touchEnd.clientY - touchStartRef.current.y);
+
+        if (Math.abs(deltaX) > 50 && deltaY < 100) {
+            if (deltaX < 0) {
+                navigateCarousel(reelId, 'next', totalItems);
+            } else {
+                navigateCarousel(reelId, 'prev', totalItems);
+            }
+            e.stopPropagation();
+        }
+        touchStartRef.current = null;
+    };
+
     const scrollToReel = (index: number) => {
         if (containerRef.current) {
             const height = containerRef.current.clientHeight;
@@ -93,6 +339,83 @@ export function VideoFeed() {
         }
     };
 
+    // Play/Pause videos based on active index AND carousel slide
+    useEffect(() => {
+        // Reset isPaused for all videos when active index changes
+        const activeReelId = reels[activeIndex]?.id;
+        if (activeReelId !== undefined) {
+            // Logic to handle carousel: video only plays if it is the current slide (index 0 for video-combined)
+            const currentSlide = carouselIndexes[activeReelId] || 0;
+            // Assume if there is a videoUrl, it is always at index 0
+            // If currentSlide is not 0, pause video.
+        }
+
+        Object.entries(videoRefs.current).forEach(([id, video]) => {
+            if (video) {
+                const reelId = Number(id);
+                const reelIndex = reels.findIndex((r: Reel) => r.id === reelId);
+                const reel = reels[reelIndex];
+                const currentSlide = carouselIndexes[reelId] || 0;
+
+                // Should play if: Is Active Reel AND Is Video Slide (Slide 0 if video exists)
+                const shouldPlay = reelIndex === activeIndex && currentSlide === 0;
+
+                if (shouldPlay) {
+                    const playPromise = video.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(() => {
+                            // Auto-play was prevented.
+                            // Try muting and playing again
+                            video.muted = true;
+                            video.play().catch(e => console.error("Autoplay failed:", e));
+                            setIsMuted(true);
+                        });
+                    }
+                    setIsPlaying(prev => ({ ...prev, [reelId]: true }));
+                } else {
+                    video.pause();
+                    video.currentTime = 0;
+                    setIsPlaying(prev => ({ ...prev, [reelId]: false }));
+                }
+            }
+        });
+
+        // Handle YouTube iframes similarly
+        Object.entries(youtubeRefs.current).forEach(([id, iframe]) => {
+            if (iframe && iframe.contentWindow) {
+                const reelId = Number(id);
+                const reelIndex = reels.findIndex((r: Reel) => r.id === reelId);
+                const reel = reels[reelIndex];
+                const currentSlide = carouselIndexes[reelId] || 0;
+                const shouldPlay = reelIndex === activeIndex && currentSlide === 0;
+
+                if (shouldPlay) {
+                    // Auto-play via src param handles initial load, but for updates we use postMessage
+                    iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo' }), '*');
+                } else {
+                    iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo' }), '*');
+                }
+            }
+        });
+
+    }, [activeIndex, reels, carouselIndexes]);
+
+    // Update mute state for all videos
+    useEffect(() => {
+        Object.values(videoRefs.current).forEach((video) => {
+            if (video) {
+                video.muted = isMuted;
+            }
+        });
+    }, [isMuted]);
+
+    // Track views when active index changes
+    useEffect(() => {
+        if (reels.length > 0 && reels[activeIndex] && !viewedReels.has(reels[activeIndex].id)) {
+            trackView(reels[activeIndex]);
+        }
+    }, [activeIndex, reels]);
+
     const handleScroll = () => {
         if (!containerRef.current) return;
         const scrollTop = containerRef.current.scrollTop;
@@ -103,12 +426,163 @@ export function VideoFeed() {
         }
     };
 
+    // Track view event via API
+    const trackView = async (reel: Reel) => {
+        setViewedReels(prev => new Set([...prev, reel.id]));
+        try {
+            await fetch(EngagementController.recordEvent.url({ reelId: reel.id }), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ event_type: 'view' }),
+            });
+        } catch (err) {
+            console.error('Failed to track view:', err);
+        }
+    };
+
+    // Track engagement event
+    const trackEngagement = async (reelId: number, eventType: 'like' | 'share' | 'click_wa') => {
+        try {
+            await fetch(EngagementController.recordEvent.url({ reelId }), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ event_type: eventType }),
+            });
+        } catch (err) {
+            console.error(`Failed to track ${eventType}:`, err);
+        }
+    };
+
     const toggleMute = () => setIsMuted(prev => !prev);
+
+    const toggleVideoPlay = (reelId: number) => {
+        const video = videoRefs.current[reelId];
+        const youtubeIframe = youtubeRefs.current[reelId];
+
+        if (video) {
+            // Regular video element
+            if (video.paused) {
+                video.play();
+                setIsPlaying(prev => ({ ...prev, [reelId]: true }));
+                setIsPaused(prev => ({ ...prev, [reelId]: false }));
+            } else {
+                video.pause();
+                setIsPlaying(prev => ({ ...prev, [reelId]: false }));
+                setIsPaused(prev => ({ ...prev, [reelId]: true }));
+            }
+        } else if (youtubeIframe && youtubeIframe.contentWindow) {
+            // YouTube iframe - use postMessage API to pause/play without reload
+            const currentlyPaused = isPaused[reelId];
+            if (currentlyPaused) {
+                // Resume playing
+                youtubeIframe.contentWindow.postMessage(
+                    JSON.stringify({ event: 'command', func: 'playVideo' }),
+                    '*'
+                );
+                setIsPaused(prev => ({ ...prev, [reelId]: false }));
+            } else {
+                // Pause
+                youtubeIframe.contentWindow.postMessage(
+                    JSON.stringify({ event: 'command', func: 'pauseVideo' }),
+                    '*'
+                );
+                setIsPaused(prev => ({ ...prev, [reelId]: true }));
+            }
+        } else {
+            // Fallback - just toggle state
+            setIsPaused(prev => ({ ...prev, [reelId]: !prev[reelId] }));
+        }
+    };
+
+    const handleTimeUpdate = (reelId: number) => {
+        const video = videoRefs.current[reelId];
+        if (video && video.duration) {
+            const progress = (video.currentTime / video.duration) * 100;
+            setVideoProgress(prev => ({ ...prev, [reelId]: progress }));
+            setVideoCurrentTime(prev => ({ ...prev, [reelId]: video.currentTime }));
+            setVideoDuration(prev => ({ ...prev, [reelId]: video.duration }));
+        }
+    };
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const handleVideoPlay = (reelId: number) => {
+        setIsPlaying(prev => ({ ...prev, [reelId]: true }));
+    };
+
+    const handleVideoPause = (reelId: number) => {
+        setIsPlaying(prev => ({ ...prev, [reelId]: false }));
+    };
+
+    const handleShowControls = (reelId: number) => {
+        setShowControls(prev => ({ ...prev, [reelId]: true }));
+        if (showControlsTimeout.current[reelId]) {
+            clearTimeout(showControlsTimeout.current[reelId]);
+        }
+        showControlsTimeout.current[reelId] = setTimeout(() => {
+            setShowControls(prev => ({ ...prev, [reelId]: false }));
+        }, 3000);
+    };
+
+    const seekToPosition = (reelId: number, clientX: number, element: HTMLElement) => {
+        const video = videoRefs.current[reelId];
+        if (video && video.duration) {
+            const rect = element.getBoundingClientRect();
+            const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+            const percentage = x / rect.width;
+            video.currentTime = percentage * video.duration;
+            setVideoProgress(prev => ({ ...prev, [reelId]: percentage * 100 }));
+        }
+    };
+
+    const handleProgressMouseDown = (e: React.MouseEvent<HTMLDivElement>, reelId: number) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setIsDragging(prev => ({ ...prev, [reelId]: true }));
+        seekToPosition(reelId, e.clientX, e.currentTarget);
+
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+            seekToPosition(reelId, moveEvent.clientX, e.currentTarget);
+        };
+
+        const handleMouseUp = () => {
+            setIsDragging(prev => ({ ...prev, [reelId]: false }));
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    const handleProgressTouchStart = (e: React.TouchEvent<HTMLDivElement>, reelId: number) => {
+        e.stopPropagation();
+        setIsDragging(prev => ({ ...prev, [reelId]: true }));
+        seekToPosition(reelId, e.touches[0].clientX, e.currentTarget);
+    };
+
+    const handleProgressTouchMove = (e: React.TouchEvent<HTMLDivElement>, reelId: number) => {
+        e.stopPropagation();
+        if (isDragging[reelId]) {
+            seekToPosition(reelId, e.touches[0].clientX, e.currentTarget);
+        }
+    };
+
+    const handleProgressTouchEnd = (e: React.TouchEvent<HTMLDivElement>, reelId: number) => {
+        e.stopPropagation();
+        setIsDragging(prev => ({ ...prev, [reelId]: false }));
+    };
 
     const toggleLike = (id: number) => {
         setLikedReels(prev =>
             prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
         );
+        // Always track 'like' event to trigger backend toggle
+        trackEngagement(id, 'like');
     };
 
     const toggleExpand = (id: number) => {
@@ -117,13 +591,73 @@ export function VideoFeed() {
         );
     };
 
-    // Handle double tap to like
+    const handleVideoTap = (reelId: number) => {
+        const now = Date.now();
+        const lastTap = lastTapRef.current;
+
+        if (lastTap && lastTap.reelId === reelId && now - lastTap.time < 300) {
+            // Always show animation
+            setShowHeartAnimation(reelId);
+            setTimeout(() => setShowHeartAnimation(null), 800);
+
+            // Only toggle if not already liked (Safe Like)
+            if (!likedReels.includes(reelId)) {
+                toggleLike(reelId);
+            }
+
+            // Haptic feedback
+            if (window.navigator && window.navigator.vibrate) {
+                window.navigator.vibrate(50);
+            }
+
+            lastTapRef.current = null;
+        } else {
+            lastTapRef.current = { time: now, reelId };
+            setTimeout(() => {
+                if (lastTapRef.current?.reelId === reelId && lastTapRef.current?.time === now) {
+                    toggleVideoPlay(reelId);
+                    lastTapRef.current = null;
+                }
+            }, 300);
+        }
+    };
+
+    const handleShare = async (reel: Reel) => {
+        const shareUrl = typeof window !== 'undefined'
+            ? `${window.location.origin}/umkm/${reel.umkmId}`
+            : `https://umkmku.com/umkm/${reel.umkmId}`;
+
+        const shareData = {
+            title: reel.umkmName,
+            text: `Lihat ${reel.product} dari ${reel.umkmName} di UMKMku!`,
+            url: shareUrl,
+        };
+
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData);
+                trackEngagement(reel.id, 'share');
+            } else {
+                await navigator.clipboard.writeText(shareUrl);
+                trackEngagement(reel.id, 'share');
+                alert('Link berhasil disalin!');
+            }
+        } catch (err) {
+            try {
+                await navigator.clipboard.writeText(shareUrl);
+                trackEngagement(reel.id, 'share');
+                alert('Link berhasil disalin!');
+            } catch {
+                console.error('Failed to share');
+            }
+        }
+    };
+
     const handleDoubleTap = (reelId: number) => {
         const now = Date.now();
         const lastTap = lastTapRef.current;
 
         if (lastTap && lastTap.reelId === reelId && now - lastTap.time < 300) {
-            // Double tap detected
             if (!likedReels.includes(reelId)) {
                 toggleLike(reelId);
             }
@@ -135,13 +669,21 @@ export function VideoFeed() {
         }
     };
 
-    // Auto-slide carousel for image galleries
+    // Auto-slide carousel for image-only galleries or if currently on image slide?
+    // For now, let's keep it manual for mixed content or auto depending on user prefs.
     useEffect(() => {
         const intervals: NodeJS.Timeout[] = [];
 
-        sampleReels.forEach((reel) => {
-            if (reel.type === 'image' && reel.images && reel.images.length > 1) {
+        reels.forEach((reel: Reel) => {
+            // Logic: If on an image slide, auto-advance? 
+            // Maybe complicated for Video+Image mixed. Let's strictly use manual for mixed, auto for image-only.
+            const currentSlide = carouselIndexes[reel.id] || 0;
+            const isVideoContent = reel.videoUrl;
+
+            // Auto-slide ONLY if it's an image-only reel
+            if (!isVideoContent && reel.images && reel.images.length > 1) {
                 const interval = setInterval(() => {
+                    if (isPaused[reel.id]) return;
                     setCarouselIndexes((prev) => {
                         const currentIndex = prev[reel.id] || 0;
                         const nextIndex = (currentIndex + 1) % reel.images!.length;
@@ -153,9 +695,45 @@ export function VideoFeed() {
         });
 
         return () => intervals.forEach(clearInterval);
-    }, []);
+    }, [isPaused, reels, carouselIndexes]);
 
+    // Loading state
+    if (isLoading) {
+        return (
+            <div className="h-[calc(100dvh-4rem)] w-full flex items-center justify-center bg-black">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-8 w-8 text-white animate-spin" />
+                    <p className="text-white text-sm">Memuat konten...</p>
+                </div>
+            </div>
+        );
+    }
 
+    // Error state
+    if (error) {
+        return (
+            <div className="h-[calc(100dvh-4rem)] w-full flex items-center justify-center bg-black">
+                <div className="flex flex-col items-center gap-4 text-center px-4">
+                    <p className="text-white text-sm">{error}</p>
+                    <Button onClick={() => fetchReels(1)} variant="outline" className="text-white border-white">
+                        Coba Lagi
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    // Empty state
+    if (reels.length === 0) {
+        return (
+            <div className="h-[calc(100dvh-4rem)] w-full flex items-center justify-center bg-black">
+                <div className="flex flex-col items-center gap-4 text-center px-4">
+                    <p className="text-white text-lg font-medium">Belum ada konten</p>
+                    <p className="text-gray-400 text-sm">Tidak ada UMKM dalam radius yang ditentukan</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div
@@ -163,7 +741,7 @@ export function VideoFeed() {
             onScroll={handleScroll}
             className="h-[calc(100dvh-4rem)] w-full snap-y snap-mandatory overflow-y-scroll no-scrollbar scroll-smooth bg-black md:bg-gray-50 dark:md:bg-gray-900"
         >
-            {sampleReels.map((reel, index) => {
+            {reels.map((reel: Reel, index: number) => {
                 const isLiked = likedReels.includes(reel.id);
                 const isExpanded = expandedReels.includes(reel.id);
                 const description = reel.description || `Menikmati ${reel.product} yang lezat. #kuliner #umkm`;
@@ -172,189 +750,410 @@ export function VideoFeed() {
                 const displayImage = isImageGallery ? reel.images![currentCarouselIndex] : reel.thumbnail;
 
                 return (
-                    <div
-                        key={reel.id}
-                        className="relative h-full w-full snap-center snap-always flex items-center justify-center pb-5 md:pb-5"
-                        onDoubleClick={() => handleDoubleTap(reel.id)}
-                        onTouchEnd={(e) => {
-                            if (e.touches.length === 0) handleDoubleTap(reel.id);
-                        }}
-                    >
-                        {/* Desktop Layout Container */}
-                        <div className="relative flex h-full w-full md:w-auto md:max-w-4xl items-center justify-center gap-4">
-
-                            {/* Video/Image Player Container */}
-                            <div className="relative h-full w-full md:aspect-[9/16] md:h-[95%] md:w-auto overflow-hidden bg-gray-900 shadow-2xl flex items-center justify-center">
-                                {/* Image/Carousel Display with Slide Animation */}
-                                <div className="relative h-full w-full overflow-hidden">
-                                    {isImageGallery && reel.images ? (
-                                        reel.images.map((img, idx) => (
-                                            <img
-                                                key={idx}
-                                                src={img}
-                                                alt={`${reel.product} ${idx + 1}`}
-                                                className={cn(
-                                                    "absolute inset-0 h-full w-full object-cover object-center opacity-90 transition-all duration-700 ease-in-out",
-                                                    idx === currentCarouselIndex
-                                                        ? "translate-x-0 opacity-90"
-                                                        : idx < currentCarouselIndex
-                                                        ? "-translate-x-full opacity-0"
-                                                        : "translate-x-full opacity-0"
-                                                )}
-                                            />
-                                        ))
-                                    ) : (
-                                        <img
-                                            src={displayImage}
-                                            alt={reel.product}
-                                            className="h-full w-full object-cover object-center opacity-90"
-                                        />
+                    <React.Fragment key={reel.id}>
+                        <div
+                            className={cn(
+                                "relative h-full w-full snap-center snap-always pb-5 md:pb-5 select-none",
+                                reel.orientation === 'landscape'
+                                    ? mobileViewMode[reel.id] === 'landscape'
+                                        ? "flex flex-col items-center justify-center"
+                                        : "flex flex-col md:flex-col items-center justify-center"
+                                    : "flex items-center justify-center"
+                            )}
+                            onDoubleClick={() => handleDoubleTap(reel.id)}
+                            onTouchEnd={(e) => {
+                                if (e.touches.length === 0) handleDoubleTap(reel.id);
+                            }}
+                        >
+                            <div className={cn(
+                                "relative flex items-center justify-center",
+                                reel.orientation === 'landscape'
+                                    ? "w-full h-full md:w-auto md:max-w-4xl md:flex-row md:gap-8"
+                                    : "h-full w-full"
+                            )}>
+                                <div
+                                    className={cn(
+                                        "relative overflow-hidden bg-black shadow-2xl flex items-center justify-center",
+                                        reel.orientation === 'landscape'
+                                            ? "w-full aspect-video max-w-full"
+                                            : "w-full h-full md:aspect-[9/16] md:h-[95%] md:w-auto"
                                     )}
-                                </div>
-
-                                {/* Carousel Indicators for Image Galleries */}
-                                {isImageGallery && reel.images!.length > 1 && (
-                                    <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-                                        {reel.images!.map((_, idx) => (
-                                            <div
-                                                key={idx}
-                                                className={cn(
-                                                    "h-1 transition-all duration-300",
-                                                    idx === currentCarouselIndex
-                                                        ? "w-8 bg-white"
-                                                        : "w-1.5 bg-white/50"
-                                                )}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* Double Tap Heart Animation */}
-                                {showHeartAnimation === reel.id && (
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
-                                        <Heart className="h-24 w-24 text-white fill-white animate-ping" />
-                                    </div>
-                                )}
-
-                                {/* Overlay Gradient (Mobile Style) */}
-                                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
-
-                                {/* Mute Button */}
-                                <button
-                                    onClick={toggleMute}
-                                    className="absolute top-4 right-4 p-2 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors z-20"
+                                    onTouchStart={(e) => isImageGallery && handleTouchStart(e, reel.id)}
+                                    onTouchEnd={(e) => isImageGallery && reel.images && handleTouchEnd(e, reel.id, reel.images.length)}
                                 >
-                                    {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-                                </button>
+                                    <div className={cn(
+                                        "relative w-full overflow-hidden",
+                                        reel.orientation === 'landscape' ? "h-full" : "h-full"
+                                    )}>
+                                        {(() => {
+                                            // Construct Media Items for this Reel
+                                            const mediaItems: { type: 'video' | 'image', url: string }[] = [];
+                                            if (reel.videoUrl) mediaItems.push({ type: 'video', url: reel.videoUrl });
+                                            if (reel.images && reel.images.length > 0) {
+                                                reel.images.forEach(img => mediaItems.push({ type: 'image', url: img }));
+                                            }
+                                            // Fallback if empty (shouldn't happen with valid data)
+                                            if (mediaItems.length === 0) mediaItems.push({ type: 'image', url: reel.thumbnail });
 
-                                {/* Info Overlay (Inside Video) */}
-                                <div className="absolute bottom-0 left-0 w-[70%] p-4 pb-2 md:pb-4 text-white z-10">
-                                    <div className="mb-2">
-                                        <h3 className="text-base font-bold drop-shadow-md hover:underline cursor-pointer">@{reel.umkmName.replace(/\s+/g, '').toLowerCase()}</h3>
-                                        <p className={cn("text-sm drop-shadow-md opacity-90 mt-1", !isExpanded && "line-clamp-2")}>
-                                            {description}
-                                        </p>
-                                        {description.length > 60 && (
-                                            <button
-                                                onClick={() => toggleExpand(reel.id)}
-                                                className="text-teal-400 font-medium text-sm hover:underline mt-1"
-                                            >
-                                                {isExpanded ? 'sembunyikan' : 'selengkapnya'}
-                                            </button>
+                                            return mediaItems.map((item, idx) => {
+                                                const isActiveSlide = idx === currentCarouselIndex;
+
+                                                return (
+                                                    <div
+                                                        key={`${reel.id}-${idx}`}
+                                                        className={cn(
+                                                            "absolute inset-0 w-full h-full transition-all duration-300 ease-in-out bg-black",
+                                                            isActiveSlide ? "opacity-100 z-10 translate-x-0" : "opacity-0 z-0 translate-x-full"
+                                                        )}
+                                                        style={{
+                                                            transform: isActiveSlide ? 'translateX(0)' : idx < currentCarouselIndex ? 'translateX(-100%)' : 'translateX(100%)',
+                                                            pointerEvents: isActiveSlide ? 'auto' : 'none'
+                                                        }}
+                                                    >
+                                                        {item.type === 'video' ? (
+                                                            // Video Slide Logic (Moved from previous block)
+                                                            isYouTubeUrl(item.url) ? (
+                                                                <div
+                                                                    className="relative h-full w-full flex items-center justify-center bg-black overflow-hidden cursor-pointer"
+                                                                    onClick={() => {
+                                                                        handleVideoTap(reel.id);
+                                                                        handleShowControls(reel.id);
+                                                                    }}
+                                                                    onMouseMove={() => handleShowControls(reel.id)}
+                                                                >
+                                                                    {/* Scale up iframe to hide YouTube branding */}
+                                                                    <div className="absolute inset-0 flex items-center justify-center" style={{ transform: 'scale(1.2)' }}>
+                                                                        <iframe
+                                                                            ref={(el) => { youtubeRefs.current[reel.id] = el; }}
+                                                                            src={`https://www.youtube.com/embed/${getYouTubeVideoId(item.url)}?autoplay=1&mute=${isMuted ? 1 : 0}&loop=1&playlist=${getYouTubeVideoId(item.url)}&controls=0&modestbranding=1&rel=0&showinfo=0&playsinline=1&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1&origin=${origin}`}
+                                                                            className="w-full h-full"
+                                                                            style={{ border: 'none', pointerEvents: 'none' }}
+                                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                            onLoad={(e) => {
+                                                                                if (index === activeIndex && currentCarouselIndex === 0) {
+                                                                                    e.currentTarget.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'playVideo' }), '*');
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                    {/* Play/Pause Indicator */}
+                                                                    {isPaused[reel.id] && (
+                                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                                                                            <div className="p-4 rounded-full bg-black/40 backdrop-blur-sm">
+                                                                                <Play className="h-10 w-10 text-white fill-white ml-1" />
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <div
+                                                                    className="relative h-full w-full flex items-center justify-center bg-black"
+                                                                    onClick={() => {
+                                                                        handleVideoTap(reel.id);
+                                                                        handleShowControls(reel.id);
+                                                                    }}
+                                                                    onMouseMove={() => handleShowControls(reel.id)}
+                                                                >
+                                                                    <video
+                                                                        ref={(el) => { videoRefs.current[reel.id] = el; }}
+                                                                        src={item.url}
+                                                                        loop
+                                                                        muted={isMuted}
+                                                                        playsInline
+                                                                        className={cn(
+                                                                            "h-full w-full object-center",
+                                                                            reel.orientation === 'landscape'
+                                                                                ? "object-contain bg-black"
+                                                                                : "object-cover"
+                                                                        )}
+                                                                        onTimeUpdate={() => handleTimeUpdate(reel.id)}
+                                                                        onPlay={() => handleVideoPlay(reel.id)}
+                                                                        onPause={() => handleVideoPause(reel.id)}
+                                                                    />
+                                                                    <div className={cn(
+                                                                        "absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none",
+                                                                        showControls[reel.id] || !isPlaying[reel.id] ? "opacity-100" : "opacity-0"
+                                                                    )}>
+                                                                        <div className="p-4 rounded-full bg-black/40 backdrop-blur-sm">
+                                                                            {isPlaying[reel.id] ? (
+                                                                                <Pause className="h-10 w-10 text-white" />
+                                                                            ) : (
+                                                                                <Play className="h-10 w-10 text-white fill-white ml-1" />
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    {/* Progress Bar */}
+                                                                    <div className="absolute bottom-0 left-0 right-0 z-30 px-3 pb-3 pt-8 bg-gradient-to-t from-black/60 to-transparent">
+                                                                        <div className="flex items-center gap-2 text-white text-xs">
+                                                                            <span className="tabular-nums min-w-[32px]">
+                                                                                {formatTime(videoCurrentTime[reel.id] || 0)}
+                                                                            </span>
+                                                                            <div
+                                                                                className="relative flex-1 h-1 bg-white/30 rounded-full cursor-pointer group"
+                                                                                onMouseDown={(e) => handleProgressMouseDown(e, reel.id)}
+                                                                                onTouchStart={(e) => handleProgressTouchStart(e, reel.id)}
+                                                                                onTouchMove={(e) => handleProgressTouchMove(e, reel.id)}
+                                                                                onTouchEnd={(e) => handleProgressTouchEnd(e, reel.id)}
+                                                                            >
+                                                                                <div
+                                                                                    className="absolute top-0 left-0 h-full bg-white rounded-full transition-all"
+                                                                                    style={{ width: `${videoProgress[reel.id] || 0}%` }}
+                                                                                />
+                                                                            </div>
+                                                                            <span className="tabular-nums min-w-[32px]">
+                                                                                {formatTime(videoDuration[reel.id] || 0)}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        ) : (
+                                                            // Image Slide Logic
+                                                            <img
+                                                                src={item.url}
+                                                                alt={`${reel.product} ${idx + 1}`}
+                                                                className="h-full w-full object-cover object-center"
+                                                            />
+                                                        )}
+                                                    </div>
+                                                );
+                                            });
+                                        })()}
+                                    </div>
+
+                                    {/* Carousel Indicators & Navigation */}
+                                    {(() => {
+                                        const mediaCount = (reel.videoUrl ? 1 : 0) + (reel.images ? reel.images.length : 0);
+                                        if (mediaCount <= 1) return null;
+
+                                        return (
+                                            <>
+                                                {/* Dots */}
+                                                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                                                    {Array.from({ length: mediaCount }).map((_, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                goToSlide(reel.id, idx);
+                                                            }}
+                                                            className={cn(
+                                                                "h-1.5 rounded-full transition-all duration-300 cursor-pointer hover:opacity-100 shadow-sm",
+                                                                idx === currentCarouselIndex
+                                                                    ? "w-8 bg-white"
+                                                                    : "w-2 bg-white/50 hover:bg-white/70"
+                                                            )}
+                                                        />
+                                                    ))}
+                                                </div>
+
+                                                {/* Navigation Areas (Invisible but clickable) */}
+                                                <div
+                                                    className="absolute inset-y-0 left-0 w-1/4 z-10"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigateCarousel(reel.id, 'prev', mediaCount);
+                                                    }}
+                                                />
+                                                <div
+                                                    className="absolute inset-y-0 right-0 w-1/4 z-10"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigateCarousel(reel.id, 'next', mediaCount);
+                                                    }}
+                                                />
+                                            </>
+                                        );
+                                    })()}
+
+
+                                    {showHeartAnimation === reel.id && (
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+                                            <Heart className="h-24 w-24 text-white fill-white animate-ping" />
+                                        </div>
+                                    )}
+
+                                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
+
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); toggleMute(); }}
+                                        className="absolute top-4 left-4 p-2 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors z-20"
+                                    >
+                                        {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                                    </button>
+
+                                    <div className={cn(
+                                        "absolute left-0 bottom-0 w-[70%] p-4 pb-2 md:pb-4 text-white z-10",
+                                        reel.orientation === 'landscape' && "hidden md:block"
+                                    )}>
+                                        <div className="mb-2">
+                                            <Link href={`/umkm/${reel.umkmId}`} className="text-base font-bold drop-shadow-md hover:underline cursor-pointer">
+                                                @{reel.umkmName.replace(/\s+/g, '').toLowerCase()}
+                                            </Link>
+                                            <p className={cn("text-sm drop-shadow-md opacity-90 mt-1", !isExpanded && "line-clamp-2")}>
+                                                {description}
+                                            </p>
+                                            {description.length > 45 && (
+                                                <button
+                                                    onClick={() => toggleExpand(reel.id)}
+                                                    className="text-gray-400 font-medium text-sm hover:underline mt-1"
+                                                >
+                                                    {isExpanded ? 'sembunyikan' : 'banyak'}
+                                                </button>
+                                            )}
+                                        </div>
+                                        {reel.distance && (
+                                            <span className="inline-block px-2 py-1 bg-green-500/80 rounded-full text-xs font-medium">
+                                                📍 {reel.distance}
+                                            </span>
                                         )}
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Desktop Actions (Right Side Buttons like TikTok Desktop) */}
-                            <div className="hidden md:flex flex-col gap-4 items-center justify-end h-[95%] pb-10">
-                                {/* Profile Button */}
-                                <Link href={`/umkm/${reel.umkmId || reel.id}`} className="relative mb-2 cursor-pointer group">
-                                    <div className="h-12 w-12 rounded-full border-2 border-white p-0.5 overflow-hidden bg-gray-800 transition-transform group-hover:scale-105">
-                                        <img src={`https://ui-avatars.com/api/?name=${reel.umkmName}&background=random`} alt="Avatar" className="h-full w-full object-cover rounded-full" />
+                                {/* Desktop Actions */}
+                                <div className="hidden md:flex flex-col gap-4 items-center justify-end h-[95%] pb-10 ml-8">
+                                    <Link href={`/umkm/${reel.umkmId}`} className="relative mb-2 cursor-pointer group">
+                                        <div className="h-12 w-12 rounded-full border-2 border-white p-0.5 overflow-hidden bg-gray-800 transition-transform group-hover:scale-105">
+                                            <img src={`https://ui-avatars.com/api/?name=${reel.umkmName}&background=random`} alt="Avatar" className="h-full w-full object-cover rounded-full" />
+                                        </div>
+                                    </Link>
+
+                                    <ActionButton
+                                        icon={Heart}
+                                        label={reel.likes + (isLiked ? 1 : 0)}
+                                        color={isLiked ? "text-red-500" : "text-gray-800 dark:text-gray-200"}
+                                        fill={isLiked}
+                                        onClick={() => toggleLike(reel.id)}
+                                    />
+
+                                    <WhatsAppButton
+                                        reelId={reel.id}
+                                        umkmName={reel.umkmName}
+                                        whatsappLink={reel.whatsappLink}
+                                        productName={reel.product}
+                                        onTrack={() => trackEngagement(reel.id, 'click_wa')}
+                                    />
+
+                                    <ActionButton icon={Share2} label="Bagikan" onClick={() => handleShare(reel)} />
+
+                                    <div className="mt-12 flex flex-col gap-2">
+                                        <Button
+                                            variant="secondary"
+                                            size="icon"
+                                            className="rounded-full bg-white hover:bg-gray-100 text-gray-800 shadow-lg border border-gray-200"
+                                            onClick={() => scrollToReel(index - 1)}
+                                            disabled={index === 0}
+                                        >
+                                            <ArrowUp className="h-5 w-5" />
+                                        </Button>
+                                        <Button
+                                            variant="secondary"
+                                            size="icon"
+                                            className="rounded-full bg-white hover:bg-gray-100 text-gray-800 shadow-lg border border-gray-200"
+                                            onClick={() => scrollToReel(index + 1)}
+                                            disabled={index === reels.length - 1}
+                                        >
+                                            <ArrowDown className="h-5 w-5" />
+                                        </Button>
                                     </div>
-                                </Link>
+                                </div>
 
-                                <ActionButton
-                                    icon={Heart}
-                                    label={reel.likes + (isLiked ? 1 : 0)}
-                                    color={isLiked ? "text-red-500" : "text-gray-800 dark:text-gray-200"}
-                                    fill={isLiked}
-                                    onClick={() => toggleLike(reel.id)}
-                                />
+                                {/* Mobile Actions */}
+                                <div className={cn(
+                                    "absolute right-2 bottom-24 flex flex-col items-center gap-4 md:hidden z-20",
+                                    reel.orientation === 'landscape' && "translate-y-1/3"
+                                )}>
+                                    <Link href={`/umkm/${reel.umkmId}`} className="relative">
+                                        <div className="h-12 w-12 rounded-full border border-white p-0.5">
+                                            <img src={`https://ui-avatars.com/api/?name=${reel.umkmName}`} className="h-full w-full rounded-full" />
+                                        </div>
+                                    </Link>
+                                    <ActionButton
+                                        icon={Heart}
+                                        label={reel.likes + (isLiked ? 1 : 0)}
+                                        color={isLiked ? "text-red-500" : "text-white"}
+                                        fill={isLiked}
+                                        overlay
+                                        onClick={() => toggleLike(reel.id)}
+                                    />
 
-                                {/* WhatsApp Button */}
-                                <WhatsAppButton />
+                                    <WhatsAppButton
+                                        overlay
+                                        reelId={reel.id}
+                                        umkmName={reel.umkmName}
+                                        whatsappLink={reel.whatsappLink}
+                                        productName={reel.product}
+                                        onTrack={() => trackEngagement(reel.id, 'click_wa')}
+                                    />
 
-                                <ActionButton icon={Share2} label="Share" onClick={() => { }} />
+                                    <ActionButton icon={Share2} label="Bagikan" color="text-white" overlay onClick={() => handleShare(reel)} />
+                                </div>
 
-                                {/* Navigation Arrows */}
-                                <div className="mt-8 flex flex-col gap-2">
-                                    <Button
-                                        variant="secondary"
-                                        size="icon"
-                                        className="rounded-full bg-white hover:bg-gray-100 text-gray-800 shadow-lg border border-gray-200"
-                                        onClick={() => scrollToReel(index - 1)}
-                                        disabled={index === 0}
-                                    >
-                                        <ArrowUp className="h-5 w-5" />
-                                    </Button>
-                                    <Button
-                                        variant="secondary"
-                                        size="icon"
-                                        className="rounded-full bg-white hover:bg-gray-100 text-gray-800 shadow-lg border border-gray-200"
-                                        onClick={() => scrollToReel(index + 1)}
-                                        disabled={index === sampleReels.length - 1}
-                                    >
-                                        <ArrowDown className="h-5 w-5" />
-                                    </Button>
+                                <div className="absolute top-4 right-4 z-20 md:hidden">
+                                    <Link href="/search" className="flex h-10 w-10 items-center justify-center rounded-full bg-black/20 backdrop-blur-sm text-white hover:bg-black/30 transition-all active:scale-95">
+                                        <Search className="h-6 w-6" />
+                                    </Link>
                                 </div>
                             </div>
-
-                            {/* Mobile Actions (Overlay Right) */}
-                            <div className="absolute bottom-[130px] right-2 flex flex-col items-center gap-4 md:hidden z-20">
-                                <Link href={`/umkm/${reel.umkmId || reel.id}`} className="relative">
-                                    <div className="h-10 w-10 rounded-full border border-white p-0.5">
-                                        <img src={`https://ui-avatars.com/api/?name=${reel.umkmName}`} className="h-full w-full rounded-full" />
-                                    </div>
-                                </Link>
-                                <ActionButton
-                                    icon={Heart}
-                                    label={reel.likes + (isLiked ? 1 : 0)}
-                                    color={isLiked ? "text-red-500" : "text-white"}
-                                    fill={isLiked}
-                                    overlay
-                                    onClick={() => toggleLike(reel.id)}
-                                />
-
-                                {/* Mobile WhatsApp Button */}
-                                <WhatsAppButton overlay />
-
-                                <ActionButton icon={Share2} label="Share" color="text-white" overlay onClick={() => { }} />
-                            </div>
-
-                            {/* Mobile Top Right Search Button */}
-                            <div className="absolute top-4 right-4 z-20 md:hidden">
-                                <Link href="/search" className="flex h-10 w-10 items-center justify-center rounded-full bg-black/20 backdrop-blur-sm text-white hover:bg-black/30 transition-all active:scale-95">
-                                    <Search className="h-6 w-6" />
-                                </Link>
-                            </div>
-
                         </div>
-                    </div>
+                    </React.Fragment>
                 );
             })}
+
+            {/* Loading Indicator for Infinite Scroll */}
+            <div
+                ref={loadMoreRef}
+                className="flex items-center justify-center h-20 w-full snap-center"
+            >
+                {isLoadingMore && (
+                    <div className="flex items-center gap-2 text-white">
+                        <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                        <span className="text-sm">Memuat lebih banyak...</span>
+                    </div>
+                )}
+                {!hasMore && showEndMessage && (
+                    <div className="flex flex-col items-center justify-center py-8 animate-in fade-in zoom-in duration-300">
+                        <p className="text-black dark:text-white text-sm font-medium bg-white/10 px-4 py-2 rounded-full backdrop-blur-md shadow-sm">
+                            Sudah mencapai akhir
+                        </p>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
 
 // WhatsApp Button Component with Animation
-function WhatsAppButton({ overlay = false }: { overlay?: boolean }) {
+function WhatsAppButton({
+    overlay = false,
+    reelId,
+    umkmName,
+    whatsappLink,
+    productName,
+    onTrack
+}: {
+    overlay?: boolean;
+    reelId?: number;
+    umkmName?: string;
+    whatsappLink?: string;
+    productName?: string;
+    onTrack?: () => void;
+}) {
     const [isPressed, setIsPressed] = useState(false);
 
-    const handleClick = () => {
+    const handleClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
         setIsPressed(true);
         setTimeout(() => setIsPressed(false), 300);
+
+        // Track WhatsApp CTA click
+        onTrack?.();
+
+        // Open WhatsApp link from API
+        if (whatsappLink) {
+            window.open(whatsappLink, '_blank');
+        }
     };
 
     return (
@@ -387,10 +1186,12 @@ function WhatsAppButton({ overlay = false }: { overlay?: boolean }) {
 function ActionButton({ icon: Icon, label, color = "", fill = false, overlay = false, onClick }: { icon: any, label: string | number, color?: string, fill?: boolean, overlay?: boolean, onClick?: () => void }) {
     const [isPressed, setIsPressed] = useState(false);
 
-    const handleClick = () => {
-        setIsPressed(true);
-        setTimeout(() => setIsPressed(false), 300);
+    const handleClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
         onClick?.();
+        setIsPressed(true);
+        setTimeout(() => setIsPressed(false), 200);
     };
 
     return (
@@ -417,4 +1218,3 @@ function ActionButton({ icon: Icon, label, color = "", fill = false, overlay = f
         </button>
     );
 }
-

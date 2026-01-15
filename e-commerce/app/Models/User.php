@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -66,5 +67,13 @@ class User extends Authenticatable
     {
         $roles = is_array($roles) ? $roles : [$roles];
         return in_array($this->role, $roles);
+    }
+
+    /**
+     * Get the UMKM profile associated with the user.
+     */
+    public function umkmProfile(): HasOne
+    {
+        return $this->hasOne(UmkmProfile::class);
     }
 }
