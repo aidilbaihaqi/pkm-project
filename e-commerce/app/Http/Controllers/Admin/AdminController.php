@@ -302,6 +302,42 @@ class AdminController extends Controller
         ]);
     }
 
+    public function blockReel(Request $request, $id): JsonResponse
+    {
+        $reel = Reel::findOrFail($id);
+        
+        $validated = $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+        
+        $reel->update([
+            'is_blocked' => true,
+            'blocked_reason' => $validated['reason'] ?? 'Melanggar kebijakan konten',
+            'blocked_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Konten berhasil diblokir',
+            'data' => $reel
+        ]);
+    }
+
+    public function unblockReel($id): JsonResponse
+    {
+        $reel = Reel::findOrFail($id);
+        
+        $reel->update([
+            'is_blocked' => false,
+            'blocked_reason' => null,
+            'blocked_at' => null,
+        ]);
+
+        return response()->json([
+            'message' => 'Konten berhasil dibuka blokirnya',
+            'data' => $reel
+        ]);
+    }
+
     public function deleteReel($id): JsonResponse
     {
         $reel = Reel::findOrFail($id);

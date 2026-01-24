@@ -65,6 +65,8 @@ Route::middleware('auth:web')->group(function () {
         
         // Content moderation
         Route::get('/moderation', [AdminController::class, 'moderation']);
+        Route::post('/moderation/{id}/block', [AdminController::class, 'blockReel']);
+        Route::post('/moderation/{id}/unblock', [AdminController::class, 'unblockReel']);
         Route::delete('/moderation/{id}', [AdminController::class, 'deleteReel']);
     });
 });

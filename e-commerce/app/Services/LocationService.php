@@ -60,6 +60,7 @@ class LocationService
         // Get all published reels with their UMKM profiles that are not blocked
         $reels = Reel::with('umkmProfile')
             ->where('status', 'published')
+            ->where('is_blocked', false)
             ->whereHas('umkmProfile', function ($query) {
                 $query->where('is_blocked', false);
             })

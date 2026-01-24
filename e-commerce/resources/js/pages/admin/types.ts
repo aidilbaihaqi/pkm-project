@@ -64,8 +64,12 @@ export interface Category {
 export interface ModerationReel {
     id: number;
     video_url: string;
-    description: string;
+    product_name: string;
+    caption: string;
     thumbnail_url: string;
+    is_blocked: boolean;
+    blocked_reason?: string;
+    blocked_at?: string;
     created_at: string;
     user?: {
         name: string;

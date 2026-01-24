@@ -35,6 +35,10 @@ class ReelsController extends Controller
             $reels = Reel::with('umkmProfile')
                 ->where('umkm_profile_id', $umkmId)
                 ->where('status', 'published')
+                ->where('is_blocked', false)
+                ->whereHas('umkmProfile', function($q) {
+                    $q->where('is_blocked', false);
+                })
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage);
 
@@ -64,6 +68,7 @@ class ReelsController extends Controller
             // If coordinates are missing (0,0), return global feed sorted by latest
             if ($lat == 0 && $lng == 0) {
                 $reels = Reel::with('umkmProfile')
+                    ->where('is_blocked', false)
                     ->whereHas('umkmProfile', function($q) {
                         $q->where('is_blocked', false);
                     })
@@ -145,6 +150,7 @@ class ReelsController extends Controller
         if ($data->isEmpty()) {
             // Fallback: If no reels in radius, return global feed
             $reels = Reel::with('umkmProfile')
+                ->where('is_blocked', false)
                 ->whereHas('umkmProfile', function($q) {
                     $q->where('is_blocked', false);
                 })
@@ -225,6 +231,13 @@ class ReelsController extends Controller
         if (!$reel) {
             return response()->json([
                 'message' => 'Reel tidak ditemukan',
+            ], 404);
+        }
+
+        // Check if reel is blocked
+        if ($reel->is_blocked) {
+            return response()->json([
+                'message' => 'Konten tidak tersedia',
             ], 404);
         }
 

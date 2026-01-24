@@ -28,6 +28,9 @@ class Reel extends Model
         'kategori',
         'type',
         'status',
+        'is_blocked',
+        'blocked_reason',
+        'blocked_at',
     ];
 
     /**
@@ -47,6 +50,8 @@ class Reel extends Model
         return [
             'price' => 'decimal:2',
             'images' => 'array',
+            'is_blocked' => 'boolean',
+            'blocked_at' => 'datetime',
         ];
     }
 
