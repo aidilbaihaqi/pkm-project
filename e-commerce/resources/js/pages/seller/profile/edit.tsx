@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { LocationPicker } from '@/components/ui/location-picker';
 import { AppLayout } from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
-import { Save, Loader2, AlertCircle, CheckCircle, Store } from 'lucide-react';
+import { Save, Loader2, AlertCircle, CheckCircle, Store, User } from 'lucide-react';
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import UmkmController from '@/actions/App/Http/Controllers/Umkm/UmkmController';
 
@@ -284,18 +284,29 @@ export default function EditProfile() {
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4 pb-24 md:gap-8 md:p-8 md:pb-8">
                 <div className="mx-auto grid w-full max-w-2xl gap-2">
-                    <div className="flex items-center gap-3">
-                        <Store className="h-8 w-8 text-teal-600" />
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                                {isNewProfile ? 'Buat Profil Toko' : 'Edit Profil Toko'}
-                            </h1>
-                            <p className="text-gray-500 dark:text-gray-400">
-                                {isNewProfile
-                                    ? 'Lengkapi informasi toko Anda untuk mulai berjualan.'
-                                    : 'Perbarui informasi toko Anda kapan saja.'}
-                            </p>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <Store className="h-8 w-8 text-teal-600" />
+                            <div>
+                                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                                    {isNewProfile ? 'Buat Profil Toko' : 'Edit Profil Toko'}
+                                </h1>
+                                <p className="text-gray-500 dark:text-gray-400">
+                                    {isNewProfile
+                                        ? 'Lengkapi informasi toko Anda untuk mulai berjualan.'
+                                        : 'Perbarui informasi toko Anda kapan saja.'}
+                                </p>
+                            </div>
                         </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => router.visit('/settings/profile')}
+                            className="self-start md:self-center bg-white dark:bg-gray-800"
+                        >
+                            <User className="mr-2 h-4 w-4" />
+                            Pengaturan Akun
+                        </Button>
                     </div>
                 </div>
 

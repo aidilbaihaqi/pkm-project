@@ -109,7 +109,7 @@ export function DesktopSidebar() {
     );
 
     const formatDistance = (meters?: number) => {
-        if (!meters) return '';
+        if (!meters) return '-';
         if (meters < 1000) {
             return `${Math.round(meters)}m`;
         }

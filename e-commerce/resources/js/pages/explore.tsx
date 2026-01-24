@@ -324,10 +324,10 @@ export default function Explore() {
                                             <h3 className="font-bold text-xs sm:text-sm mb-0.5 sm:mb-1 drop-shadow-md line-clamp-1">
                                                 {item.umkmName}
                                             </h3>
-                                            <div className="flex items-center justify-between text-[10px] sm:text-xs opacity-90">
+                                            <div className="flex items-center justify-between text-[10px] sm:text-xs">
                                                 <div className="flex items-center gap-0.5 sm:gap-1 min-w-0 flex-1">
-                                                    <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
-                                                    <span className="truncate">{item.distance || item.location}</span>
+                                                    <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0 text-white" />
+                                                    <span className="truncate text-white drop-shadow-md">{item.distance || item.location}</span>
                                                 </div>
                                             </div>
                                         </div>

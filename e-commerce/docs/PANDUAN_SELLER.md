@@ -20,7 +20,6 @@
 7. [Memahami Statistik](#7-memahami-statistik)
 8. [Tips Konten Menarik](#8-tips-konten-menarik)
 9. [FAQ & Troubleshooting](#9-faq--troubleshooting)
-10. [Daftar Pustaka](#10-daftar-pustaka)
 
 ---
 
