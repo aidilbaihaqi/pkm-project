@@ -17,9 +17,10 @@ Route::get('/explore', function () {
     return Inertia::render('explore');
 })->name('explore');
 
-Route::get('/search', function () {
-    return Inertia::render('search');
-})->name('search');
+// Search Routes
+Route::get('/search', [App\Http\Controllers\Search\SearchController::class, 'index'])->name('search');
+Route::get('/api/search', [App\Http\Controllers\Search\SearchController::class, 'search'])->name('api.search');
+Route::get('/api/search/suggestions', [App\Http\Controllers\Search\SearchController::class, 'suggestions'])->name('api.search.suggestions');
 
 Route::get('/register-seller', function () {
     return Inertia::render('join-umkm');
@@ -135,15 +136,15 @@ Route::middleware([
         return Inertia::render('admin/index', ['view' => 'moderation']);
     })->name('moderation');
 
-    // Admin API Actions
-    Route::get('/api/categories', [AdminController::class, 'categories'])->name('api.categories');
-    Route::post('/api/categories', [AdminController::class, 'storeCategory'])->name('api.categories.store');
-    Route::put('/api/categories/{id}', [AdminController::class, 'updateCategory'])->name('api.categories.update');
-    Route::delete('/api/categories/{id}', [AdminController::class, 'deleteCategory'])->name('api.categories.delete');
+    // Admin API Actions - Commented out until AdminController is implemented
+    // Route::get('/api/categories', [AdminController::class, 'categories'])->name('api.categories');
+    // Route::post('/api/categories', [AdminController::class, 'storeCategory'])->name('api.categories.store');
+    // Route::put('/api/categories/{id}', [AdminController::class, 'updateCategory'])->name('api.categories.update');
+    // Route::delete('/api/categories/{id}', [AdminController::class, 'deleteCategory'])->name('api.categories.delete');
 
-    Route::get('/api/moderation', [AdminController::class, 'moderation'])->name('api.moderation');
-    Route::delete('/api/moderation/{id}', [AdminController::class, 'deleteReel'])->name('api.moderation.delete');
-    Route::get('/api/trend-stats', [AdminController::class, 'trendStats'])->name('api.trendStats');
+    // Route::get('/api/moderation', [AdminController::class, 'moderation'])->name('api.moderation');
+    // Route::delete('/api/moderation/{id}', [AdminController::class, 'deleteReel'])->name('api.moderation.delete');
+    // Route::get('/api/trend-stats', [AdminController::class, 'trendStats'])->name('api.trendStats');
 });
 
 require __DIR__.'/settings.php';

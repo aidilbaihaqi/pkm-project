@@ -226,3 +226,130 @@ Allowed origins:
 
 ### Task 5: Upload Video
 - `POST /api/seller/uploads/video/init` - Init upload (get pre-signed URL)
+
+
+---
+
+## Search API
+
+### Search UMKM & Reels
+
+```
+GET /api/search?q={query}
+```
+
+**Auth Required:** No (Public)
+
+**Query Parameters:**
+- `q` (required): Search query string
+- `type` (optional): Filter by type (`all`, `umkm`, `reels`)
+- `kategori` (optional): Filter by category
+
+**Example Request:**
+```
+GET /api/search?q=bakso
+```
+
+**Response Success (200):**
+```json
+{
+  "umkm": [
+    {
+      "id": 1,
+      "nama_toko": "Bakso Pak Joko",
+      "kategori": "Makanan",
+      "alamat": "Jl. Basuki Rahmat No. 78, Tanjungpinang",
+      "avatar": "https://...",
+      "is_open": true,
+      "deskripsi": "Bakso urat jumbo dengan kuah kaldu sapi pilihan..."
+    }
+  ],
+  "reels": [
+    {
+      "id": 1,
+      "product_name": "Bakso Urat Jumbo",
+      "caption": "Bakso urat jumbo sebesar kepalan tangan!...",
+      "price": 20000,
+      "thumbnail_url": "https://...",
+      "kategori": "Makanan",
+      "umkm": {
+        "id": 1,
+        "nama_toko": "Bakso Pak Joko",
+        "avatar": "https://..."
+      }
+    }
+  ],
+  "total": 2
+}
+```
+
+---
+
+### Get Search Suggestions
+
+```
+GET /api/search/suggestions?q={query}
+```
+
+**Auth Required:** No (Public)
+
+**Query Parameters:**
+- `q` (optional): Partial search query for autocomplete
+
+**Example Request:**
+```
+GET /api/search/suggestions?q=bak
+```
+
+**Response Success (200):**
+```json
+{
+  "suggestions": [
+    "Bakso Urat Jumbo",
+    "Bakso Beranak",
+    "Bakso Pak Joko",
+    "Makanan"
+  ]
+}
+```
+
+**Example Request (No Query - Get Popular):**
+```
+GET /api/search/suggestions
+```
+
+**Response Success (200):**
+```json
+{
+  "suggestions": [
+    "Makanan",
+    "Minuman",
+    "Fashion",
+    "Kerajinan",
+    "Gudeg Komplit",
+    "Bakso Urat Jumbo",
+    "Batik Tulis Melayu",
+    "Kopi Gayo V60"
+  ]
+}
+```
+
+---
+
+## Search Features
+
+### Frontend Features
+- ✅ Real-time search with debouncing (500ms)
+- ✅ Search history stored in localStorage
+- ✅ Dynamic suggestions based on query
+- ✅ Search results display (UMKM stores & Products)
+- ✅ Clear search history
+- ✅ Recent searches display
+- ✅ Loading states
+
+### Backend Features
+- ✅ Full-text search in UMKM profiles (nama_toko, kategori, deskripsi, alamat)
+- ✅ Full-text search in Reels (product_name, caption, kategori)
+- ✅ Dynamic suggestions based on existing data
+- ✅ Popular suggestions when no query provided
+- ✅ Results pagination ready (limit 10 UMKM, 20 Reels)
