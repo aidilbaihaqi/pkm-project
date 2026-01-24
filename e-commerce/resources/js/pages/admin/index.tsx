@@ -69,7 +69,7 @@ export default function AdminDashboard({ view }: { view?: string }) {
                     setMeta(sellersData.meta);
                 }
             } else if (view === 'categories') {
-                const catResponse = await fetch('/admin/api/categories', { credentials: 'include' });
+                const catResponse = await fetch('/api/admin/categories', { credentials: 'include' });
                 if (catResponse.ok) {
                     const catData = await catResponse.json();
                     setCategories(catData.data);
@@ -81,13 +81,13 @@ export default function AdminDashboard({ view }: { view?: string }) {
                     setStats(statsData.data);
                 }
                 // Fetch trend data for charts
-                const trendResponse = await fetch('/admin/api/trend-stats', { credentials: 'include' });
+                const trendResponse = await fetch('/api/admin/trend-stats', { credentials: 'include' });
                 if (trendResponse.ok) {
                     const trendResult = await trendResponse.json();
                     setTrendData(trendResult.data);
                 }
             } else if (view === 'moderation') {
-                const modResponse = await fetch(`/admin/api/moderation?page=${page}`, { credentials: 'include' });
+                const modResponse = await fetch(`/api/admin/moderation?page=${page}`, { credentials: 'include' });
                 if (modResponse.ok) {
                     const modData = await modResponse.json();
                     setReels(modData.data);

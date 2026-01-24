@@ -14,7 +14,7 @@ export const CategoriesView = ({ categories, fetchCategories }: { categories: Ca
         e.preventDefault();
         setLoading(true);
         try {
-            const url = editingCategory ? `/admin/api/categories/${editingCategory.id}` : '/admin/api/categories';
+            const url = editingCategory ? `/api/admin/categories/${editingCategory.id}` : '/api/admin/categories';
             const method = editingCategory ? 'PUT' : 'POST';
 
             await fetch(url, {
@@ -40,7 +40,7 @@ export const CategoriesView = ({ categories, fetchCategories }: { categories: Ca
     const handleDelete = async (id: number) => {
         if (!confirm('Hapus kategori ini?')) return;
         try {
-            await fetch(`/admin/api/categories/${id}`, {
+            await fetch(`/api/admin/categories/${id}`, {
                 method: 'DELETE',
                 headers: { 'X-XSRF-TOKEN': getCsrfToken() },
             });

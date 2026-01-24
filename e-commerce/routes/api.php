@@ -55,5 +55,16 @@ Route::middleware('auth:web')->group(function () {
         Route::post('/sellers/{id}/block', [AdminController::class, 'blockSeller']);
         Route::post('/sellers/{id}/unblock', [AdminController::class, 'unblockSeller']);
         Route::get('/stats', [AdminController::class, 'stats']);
+        Route::get('/trend-stats', [AdminController::class, 'trendStats']);
+        
+        // Category management
+        Route::get('/categories', [AdminController::class, 'categories']);
+        Route::post('/categories', [AdminController::class, 'storeCategory']);
+        Route::put('/categories/{id}', [AdminController::class, 'updateCategory']);
+        Route::delete('/categories/{id}', [AdminController::class, 'deleteCategory']);
+        
+        // Content moderation
+        Route::get('/moderation', [AdminController::class, 'moderation']);
+        Route::delete('/moderation/{id}', [AdminController::class, 'deleteReel']);
     });
 });

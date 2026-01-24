@@ -15,7 +15,7 @@ export const ModerationView = ({ reels, fetchReels, meta, currentPage, setCurren
     const handleDelete = async (id: number) => {
         if (!confirm('Hapus konten ini secara permanen?')) return;
         try {
-            await fetch(`/admin/api/moderation/${id}`, {
+            await fetch(`/api/admin/moderation/${id}`, {
                 method: 'DELETE',
                 headers: { 'X-XSRF-TOKEN': getCsrfToken() },
             });
